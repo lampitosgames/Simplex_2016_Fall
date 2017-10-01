@@ -1,7 +1,7 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 15
-VisualStudioVersion = 15.0.26430.16
+VisualStudioVersion = 15.0.26730.12
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "BasicX", "BasicX\BasicX.vcxproj", "{E745E25C-0143-42AC-A486-1395A4C972AE}"
 EndProject
@@ -120,8 +120,9 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "A06 - Octree", "A06 - Octre
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "24_Physics", "24_Physics\24_Physics.vcxproj", "{58CB6636-1057-466F-AB91-BADB3395421A}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "12_MeshClass_Del", "12_MeshClass_Del\12_MeshClass_Del.vcxproj", "{8D7AB7A9-4CB7-48DD-B29E-4310BE8A0DBC}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "E04_Transformations", "12_MeshClass_Del\12_MeshClass_Del.vcxproj", "{8D7AB7A9-4CB7-48DD-B29E-4310BE8A0DBC}"
 EndProject
+<<<<<<< HEAD
 <<<<<<< HEAD
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Exams", "Exams", "{28D54825-3446-4D06-9567-33CB8A403B66}"
 EndProject
@@ -139,6 +140,9 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Ex01Cs", "Ex01Cs\Ex01Cs.vcx
 =======
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "E04_Transformations", "E04_Transformations\E04_Transformations.vcxproj", "{97E5E271-24FD-4D71-9EA9-6CA2B5C0AA03}"
 >>>>>>> Began progress on E04_Transformations [IGME-309]
+=======
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "E04 - Transformations", "E04 - Transformations\E04 - Transformations.vcxproj", "{97E5E271-24FD-4D71-9EA9-6CA2B5C0AA03}"
+>>>>>>> E04 Deliverable
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -383,5 +387,8 @@ Global
 =======
 		{97E5E271-24FD-4D71-9EA9-6CA2B5C0AA03} = {13CD5CAF-2378-4851-9BEB-DF01D5A85C42}
 >>>>>>> Began progress on E04_Transformations [IGME-309]
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {25035F28-7244-4F16-80DF-F2EE1B145ACF}
 	EndGlobalSection
 EndGlobal

@@ -16,7 +16,8 @@ class Application
 {
 	matrix4 m_m4Object1;
 	MyMesh* m_aMeshes[46];
-	vector3* m_aMeshTranslations[46];
+	vector3 m_aMeshTranslations[46];
+	vector3 m_vPosition;
 
 	String m_sProgrammer = "Alberto Bobadilla - labigm@rit.edu";
 private:
