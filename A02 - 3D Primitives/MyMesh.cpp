@@ -435,8 +435,54 @@ void MyMesh::GenerateTorus(float a_fOuterRadius, float a_fInnerRadius, int a_nSu
 	Release();
 	Init();
 
-	// Replace this with your code
-	GenerateCube(a_fOuterRadius * 2.0f, a_v3Color);
+	//Get pi
+	float pi = glm::pi<float>();
+	//Get the radius of the torus
+	float torusRadius = (a_fOuterRadius + a_fInnerRadius) / 2.0f;
+	//Get the radius of the tube
+	float tubeRadius = (a_fOuterRadius - a_fInnerRadius) / 2.0f;
+
+	//2d vector of vector3s. Every list in this vector represents a circle positioned on the tube of the torus
+	std::vector<std::vector<vector3>> radialCircles(a_nSubdivisionsA);
+
+	//Loop through the number of subdivisions of the torus
+	for (int i = 0; i < a_nSubdivisionsA; i++) {
+		//Get the theta at this location
+		float torusTheta = (2.0f*pi*i) / a_nSubdivisionsA;
+		
+		//Create a new list to hold the positions around the tube at this torusTheta
+		std::vector<vector3> circlePositions(a_nSubdivisionsB);
+		//Loop through the number of subdivisions of the tube
+		for (int j = 0; j < a_nSubdivisionsB; j++) {
+			//Calculate the tubeTheta (how far around the tube this point will be)
+			float tubeTheta = (2.0f*pi*j) / a_nSubdivisionsB;
+			//Calculate the vertex location using the equation for a torus
+			float x = (torusRadius + tubeRadius*glm::cos(tubeTheta))*glm::cos(torusTheta);
+			float y = tubeRadius*glm::sin(tubeTheta);
+			float z = (torusRadius + tubeRadius*glm::cos(tubeTheta))*glm::sin(torusTheta);
+			circlePositions[j] = vector3(x, y, z);
+		}
+		//Add this circle to the array
+		radialCircles[i] = circlePositions;
+	}
+
+	//Loop through all the edge circles
+	for (int i = 0; i < a_nSubdivisionsA; i++) {
+		//Get the current circle and the next one, looping if needed
+		std::vector<vector3> circleA = radialCircles[i];
+		std::vector<vector3> circleB = radialCircles[(i + 1) % a_nSubdivisionsA];
+
+		//Loop for every vertex in the circle array
+		for (int j = 0; j < a_nSubdivisionsB; j++) {
+			//Grab all 4 points that will make up a quad and create said quad
+			vector3 point1 = circleA[j];
+			vector3 point2 = circleA[(j + 1) % a_nSubdivisionsB];
+			vector3 point3 = circleB[j];
+			vector3 point4 = circleB[(j + 1) % a_nSubdivisionsB];
+			AddQuad(point1, point2, point3, point4);
+		}
+	}
+
 	// -------------------------------
 
 	// Adding information about color
