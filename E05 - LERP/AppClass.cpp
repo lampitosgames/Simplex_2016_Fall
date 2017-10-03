@@ -55,20 +55,26 @@ void Application::Display(void)
 	fTimer += m_pSystem->GetDeltaTime(uClock); //get the delta time for that timer
 
 	//calculate the current position
-	vector3 v3CurrentPos;
-	
+	vector3 v3Current = vector3(0.0f, 0.0f, 0.0f);
+
+	float fTimeMin = 0.0f, fTimeMax = 2.5f;
+
+	float fPercent = MapValue(fTimer, fTimeMin, fTimeMax, 0.0f, 1.0f);
+	static int iStop = 0;
+	v3Current = glm::lerp(m_stopsList[iStop % m_stopsList.size()], m_stopsList[(iStop + 1) % m_stopsList.size()], fPercent);
+	if (fTimer >= fTimeMax) {
+		fTimer = 0;
+		iStop++;
+	}
 
 
 
-
-	//your code goes here
-	v3CurrentPos = vector3(0.0f, 0.0f, 0.0f);
 	//-------------------
 	
 
 
 	
-	matrix4 m4Model = glm::translate(v3CurrentPos);
+	matrix4 m4Model = glm::translate(v3Current);
 	m_pModel->SetModelMatrix(m4Model);
 
 	m_pMeshMngr->Print("\nTimer: ");//Add a line on top
@@ -77,7 +83,7 @@ void Application::Display(void)
 	// Draw stops
 	for (uint i = 0; i < m_stopsList.size(); ++i)
 	{
-		m_pMeshMngr->AddSphereToRenderList(glm::translate(m_stopsList[i]) * glm::scale(vector3(0.05f)), C_GREEN, RENDER_WIRE);
+		m_pMeshMngr->AddSphereToRenderList(glm::translate(m_stopsList[i]) * glm::scale(vector3(0.05f)), C_RED, RENDER_WIRE);
 	}
 	
 	// draw a skybox
