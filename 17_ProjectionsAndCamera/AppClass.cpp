@@ -51,12 +51,31 @@ void Application::Display(void)
 	ClearScreen();
 	
 	//draw a skybox
+	//Skybox doesn't move with the camera because we aren't applying our custom views and projections to it
 	m_pMeshMngr->AddSkyboxToRenderList();
 
 	static float fPos = 0.0f;
 	m_pCamera->SetPosition(vector3(fPos, 0.0f, 10.0f));
 	m_pCamera->SetTarget(vector3(fPos, 0.0f, 9.0f));
 	fPos -= 0.01f;
+
+	//Where the camera is located/facing.  This tells you about camera location/orientation, but not perspective
+	vector3 v3LookingAt = m_v3CameraPosition;
+	v3LookingAt.z -= 1.0f;
+	//GLM::lookat takes three args.  (where camera is located, point being looked at, local up vector of the camera)
+	matrix4 m4View = glm::lookAt(vector3(0.0f, 0.0f, 30.0f) + m_v3CameraPosition, vector3(0.0f, 0.0f, 0.0f) + v3LookingAt, AXIS_Y); //m_pCameraMngr->GetViewMatrix();
+	
+	//The camera's perspective.  How the camera is looking.  FoV, orthographic/perspective, etc.  Stuff specific to how the camera views things
+	//glm::perspective(field of view, aspect ratio, near plane, far plane)
+	//You'll need to get the resolution of the window for the homework
+	matrix4 m4Projection = glm::perspective(80.0f, m_pSystem->GetWindowRatio(), 0.01f, 1000.0f); //m_pCameraMngr->GetProjectionMatrix();
+	//OR
+	//glm::ortho(how much to the left I can see, how much to the right I can see, ...up I can see, ...down I can see, near plane, far plane)
+	//matrix4 m4Projection = glm::ortho(-10.0f, 10.0f, -20.0f, 20.0f, 0.01f, 1000.0f);
+
+	matrix4 m4Model = ToMatrix4(m_qArcBall);
+
+	m_pMesh->Render(m4Projection, m4View, m4Model);
 
 	//draw the primitive
 	//m_pMesh->Render(m_pCamera->GetProjectionMatrix(), m_pCamera->GetViewMatrix(), ToMatrix4(m_qArcBall));
