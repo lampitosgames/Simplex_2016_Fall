@@ -51,6 +51,11 @@ void Application::Display(void)
 	//clear the render list
 	m_pMeshMngr->ClearRenderList();
 
+	vector3 lookAt = m_v3CamPos + m_m3RotMat*vector3(0.0f, 0.0f, -1.0f);
+	vector3 camUp = m_m3RotMat * vector3(0.0f, 1.0f, 0.0f);
+
+	m_pCamera->SetPositionTargetAndUp(m_v3CamPos, lookAt, camUp - m_v3CamPos);
+
 	//Render the list of MyMeshManager
 	m_pMyMeshMngr->Render();
 	

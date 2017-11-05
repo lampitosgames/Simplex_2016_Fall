@@ -26,7 +26,7 @@ void Application::ProcessMousePressed(sf::Event a_event)
 		break;
 	case sf::Mouse::Button::Right:
 		gui.m_bMousePressed[2] = true;
-		m_bFPC = true;
+		m_bRotateCamera = true;
 		break;
 	}
 
@@ -47,7 +47,7 @@ void Application::ProcessMouseReleased(sf::Event a_event)
 		break;
 	case sf::Mouse::Button::Right:
 		gui.m_bMousePressed[2] = false;
-		m_bFPC = false;
+		m_bRotateCamera = false;
 		break;
 	}
 
@@ -327,7 +327,7 @@ void Application::ArcBall(float a_fSensitivity)
 }
 void Application::CameraRotation(float a_fSpeed)
 {
-	if (m_bFPC == false)
+	if (m_bRotateCamera == false)
 		return;
 
 	UINT	MouseX, MouseY;		// Coordinates for the mouse
@@ -343,31 +343,44 @@ void Application::CameraRotation(float a_fSpeed)
 	MouseX = pt.x;
 	MouseY = pt.y;
 
+	//Mouse sensitivity
+	float sensitivity = 0.001;
+
 	//Calculate the difference in view with the angle
 	float fAngleX = 0.0f;
 	float fAngleY = 0.0f;
 	float fDeltaMouse = 0.0f;
+
 	if (MouseX < CenterX)
 	{
 		fDeltaMouse = static_cast<float>(CenterX - MouseX);
-		fAngleY += fDeltaMouse * a_fSpeed;
+		fAngleX = -sensitivity * fDeltaMouse;
 	}
 	else if (MouseX > CenterX)
 	{
 		fDeltaMouse = static_cast<float>(MouseX - CenterX);
-		fAngleY -= fDeltaMouse * a_fSpeed;
+		fAngleX = sensitivity * fDeltaMouse;
 	}
 
 	if (MouseY < CenterY)
 	{
 		fDeltaMouse = static_cast<float>(CenterY - MouseY);
-		fAngleX -= fDeltaMouse * a_fSpeed;
+		fAngleY = -sensitivity * fDeltaMouse;
 	}
 	else if (MouseY > CenterY)
 	{
 		fDeltaMouse = static_cast<float>(MouseY - CenterY);
-		fAngleX += fDeltaMouse * a_fSpeed;
+		fAngleY = sensitivity * fDeltaMouse;
 	}
+
+	//m_vCamRot.y -= sensitivity * (MouseX - CenterX);
+	//m_vCamRot.x -= sensitivity * (MouseY - CenterY);
+
+	m_vCamRot.y -= fAngleX;
+	m_vCamRot.x -= fAngleY;
+
+	m_m3RotMat = (matrix3)glm::yawPitchRoll(m_vCamRot.y, m_vCamRot.x, m_vCamRot.z);
+
 	//Change the Yaw and the Pitch of the camera
 	SetCursorPos(CenterX, CenterY);//Position the mouse in the center
 }
@@ -385,6 +398,35 @@ void Application::ProcessKeyboard(void)
 
 	if (fMultiplier)
 		fSpeed *= 5.0f;
+
+	//Calculate velocity
+	vector3 camVel = vector3(0.0f, 0.0f, 0.0f);
+
+	//If the user is pressing W, move forward
+	if (sf::Keyboard::isKeyPressed(sf::Keyboard::W)) {
+		camVel += m_m3RotMat * vector3(0.0f, 0.0f, -1.0f);
+	}
+
+	//If the user is pressing A, move left
+	if (sf::Keyboard::isKeyPressed(sf::Keyboard::A)) {
+		camVel += m_m3RotMat * vector3(-1.0f, 0.0f, 0.0f);
+	}
+
+	//If the user is pressing S, move backward
+	if (sf::Keyboard::isKeyPressed(sf::Keyboard::S)) {
+		camVel += m_m3RotMat * vector3(0.0f, 0.0f, 1.0f);
+	}
+
+	//If the user is pressing D, move right
+	if (sf::Keyboard::isKeyPressed(sf::Keyboard::D)) {
+		camVel += m_m3RotMat * vector3(1.0f, 0.0f, 0.0f);
+	}
+
+	//If the camera is moving at all
+	if (camVel != vector3()) {
+		//Set speed equal to fSpeed.  Add it to the camera position
+		m_v3CamPos += glm::normalize(camVel) * fSpeed;
+	}
 #pragma endregion
 }
 //Joystick
