@@ -17,16 +17,16 @@ namespace Simplex
 class Application
 {
 	MyCamera* m_pCamera = nullptr; //Camera class
+	
 	//camera position
-	vector3 m_v3CamPos = vector3(0.0f, 0.0f, 0.0f);
+	vector3 m_v3CamPos = vector3(0.0f, 4.0f, 0.0f);
+	//camera orientation
+	quaternion m_qCamOrient = quaternion();
 	//should the camera rotate
 	bool m_bRotateCamera = false;
-	//camera rotation
-	vector3 m_vCamRot = vector3(0.0f, 0.0f, 0.0f);
-	matrix3 m_m3RotMat = matrix3();
-	quaternion m_qCamOrient = quaternion();
+
 	MyMeshManager* m_pMyMeshMngr = nullptr; //My Mesh Manager
-	String m_sProgrammer = "Alberto Bobadilla - labigm@rit.edu"; //Programmer
+	String m_sProgrammer = "Daniel Timko - det2948@rit.edu"; //Programmer
 private:
 	static ImGuiObject gui; //GUI object
 

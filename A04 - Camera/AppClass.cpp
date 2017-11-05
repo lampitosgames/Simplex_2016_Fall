@@ -3,7 +3,7 @@ using namespace Simplex;
 void Application::InitVariables(void)
 {
 	////Change this to your name and email
-	//m_sProgrammer = "Alberto Bobadilla - labigm@rit.edu";
+	//m_sProgrammer = "Daniel Timko - det2948@rit.edu";
 
 	////Alberto needed this at this position for software recording.
 	//m_pWindow->setPosition(sf::Vector2i(710, 0));
@@ -51,10 +51,14 @@ void Application::Display(void)
 	//clear the render list
 	m_pMeshMngr->ClearRenderList();
 
-	vector3 lookAt = m_v3CamPos + m_m3RotMat*vector3(0.0f, 0.0f, -1.0f);
-	vector3 camUp = m_m3RotMat * vector3(0.0f, 1.0f, 0.0f);
+	//Multiply the negative z axis by the camera orientation to get local forward (target) vector
+	vector3 v3CamTarget = m_v3CamPos + m_qCamOrient * -AXIS_Z;
 
-	m_pCamera->SetPositionTargetAndUp(m_v3CamPos, lookAt, camUp - m_v3CamPos);
+	//Get the up vector by multiplying the Y axis by the camera orientation
+	vector3 v3CamUp = m_qCamOrient * AXIS_Y;
+
+	//Set the camera's position, target, and up vector
+	m_pCamera->SetPositionTargetAndUp(m_v3CamPos, v3CamTarget, v3CamUp);
 
 	//Render the list of MyMeshManager
 	m_pMyMeshMngr->Render();

@@ -129,7 +129,7 @@ void Simplex::MyCamera::SetPositionTargetAndUp(vector3 a_v3Position, vector3 a_v
 {
 	m_v3Position = a_v3Position;
 	m_v3Target = a_v3Target;
-	m_v3Up = a_v3Position + a_v3Upward;
+	m_v3Up = a_v3Upward;
 	CalculateProjectionMatrix();
 }
 

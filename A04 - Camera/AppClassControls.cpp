@@ -327,59 +327,36 @@ void Application::ArcBall(float a_fSensitivity)
 }
 void Application::CameraRotation(float a_fSpeed)
 {
+	//Is the camera rotating?
 	if (m_bRotateCamera == false)
 		return;
 
-	UINT	MouseX, MouseY;		// Coordinates for the mouse
-	UINT	CenterX, CenterY;	// Coordinates for the center of the screen.
-
-								//Initialize the position of the pointer to the middle of the screen
-	CenterX = m_pSystem->GetWindowX() + m_pSystem->GetWindowWidth() / 2;
-	CenterY = m_pSystem->GetWindowY() + m_pSystem->GetWindowHeight() / 2;
+	//Initialize the position of the pointer to the middle of the screen
+	int CenterX = m_pSystem->GetWindowX() + m_pSystem->GetWindowWidth() / 2;
+	int CenterY = m_pSystem->GetWindowY() + m_pSystem->GetWindowHeight() / 2;
 
 	//Calculate the position of the mouse and store it
 	POINT pt;
 	GetCursorPos(&pt);
-	MouseX = pt.x;
-	MouseY = pt.y;
+	int MouseX = pt.x;
+	int MouseY = pt.y;
 
 	//Mouse sensitivity
-	float sensitivity = 0.001;
+	float sensitivity = 0.1f;
 
-	//Calculate the difference in view with the angle
-	float fAngleX = 0.0f;
-	float fAngleY = 0.0f;
-	float fDeltaMouse = 0.0f;
+	//Get angle deltas based on mouse delta * sensitivity
+	float fAngleX = sensitivity * (MouseX - CenterX);
+	float fAngleY = sensitivity * (MouseY - CenterY);
+	
+	//Global Y rotation
+	//This uses the camera's local x axis but the global Y axis.  Looking up or down still rotates around the global Y
+	//Better for FPS gameplay
+	m_qCamOrient = glm::angleAxis(-fAngleX, AXIS_Y) * m_qCamOrient * glm::angleAxis(-fAngleY, AXIS_X);
 
-	if (MouseX < CenterX)
-	{
-		fDeltaMouse = static_cast<float>(CenterX - MouseX);
-		fAngleX = -sensitivity * fDeltaMouse;
-	}
-	else if (MouseX > CenterX)
-	{
-		fDeltaMouse = static_cast<float>(MouseX - CenterX);
-		fAngleX = sensitivity * fDeltaMouse;
-	}
-
-	if (MouseY < CenterY)
-	{
-		fDeltaMouse = static_cast<float>(CenterY - MouseY);
-		fAngleY = -sensitivity * fDeltaMouse;
-	}
-	else if (MouseY > CenterY)
-	{
-		fDeltaMouse = static_cast<float>(MouseY - CenterY);
-		fAngleY = sensitivity * fDeltaMouse;
-	}
-
-	//m_vCamRot.y -= sensitivity * (MouseX - CenterX);
-	//m_vCamRot.x -= sensitivity * (MouseY - CenterY);
-
-	m_vCamRot.y -= fAngleX;
-	m_vCamRot.x -= fAngleY;
-
-	m_m3RotMat = (matrix3)glm::yawPitchRoll(m_vCamRot.y, m_vCamRot.x, m_vCamRot.z);
+	//Local Y rotation
+	//This rotates around the camera's up vector for Y (local Y axis).
+	//Better for a spaceship simulation.  Should probably tack on a local z rotation (roll) as well in that case
+	//m_qCamOrient = m_qCamOrient * glm::angleAxis(-fAngleY, AXIS_X) * glm::angleAxis(-fAngleX, AXIS_Y);
 
 	//Change the Yaw and the Pitch of the camera
 	SetCursorPos(CenterX, CenterY);//Position the mouse in the center
@@ -404,25 +381,29 @@ void Application::ProcessKeyboard(void)
 
 	//If the user is pressing W, move forward
 	if (sf::Keyboard::isKeyPressed(sf::Keyboard::W)) {
-		camVel += m_m3RotMat * vector3(0.0f, 0.0f, -1.0f);
+		//Move along the local axis by rotating the global
+		camVel += m_qCamOrient * vector3(0.0f, 0.0f, -1.0f);
 	}
 
 	//If the user is pressing A, move left
 	if (sf::Keyboard::isKeyPressed(sf::Keyboard::A)) {
-		camVel += m_m3RotMat * vector3(-1.0f, 0.0f, 0.0f);
+		//Move along the local axis by rotating the global
+		camVel += m_qCamOrient * vector3(-1.0f, 0.0f, 0.0f);
 	}
 
 	//If the user is pressing S, move backward
 	if (sf::Keyboard::isKeyPressed(sf::Keyboard::S)) {
-		camVel += m_m3RotMat * vector3(0.0f, 0.0f, 1.0f);
+		//Move along the local axis by rotating the global
+		camVel += m_qCamOrient * vector3(0.0f, 0.0f, 1.0f);
 	}
 
 	//If the user is pressing D, move right
 	if (sf::Keyboard::isKeyPressed(sf::Keyboard::D)) {
-		camVel += m_m3RotMat * vector3(1.0f, 0.0f, 0.0f);
+		//Move along the local axis by rotating the global
+		camVel += m_qCamOrient * vector3(1.0f, 0.0f, 0.0f);
 	}
 
-	//If the camera is moving at all
+	//0 length check for camVel.  It throws errors if you pass a length 0 vector into normalize()
 	if (camVel != vector3()) {
 		//Set speed equal to fSpeed.  Add it to the camera position
 		m_v3CamPos += glm::normalize(camVel) * fSpeed;
