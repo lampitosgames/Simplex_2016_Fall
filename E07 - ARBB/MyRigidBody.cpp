@@ -85,8 +85,35 @@ void MyRigidBody::SetModelMatrix(matrix4 a_m4ModelMatrix)
 	m_m4ToWorld = a_m4ModelMatrix;
 	
 	//your code goes here---------------------
-	m_v3MinG = m_v3MinL;
-	m_v3MaxG = m_v3MaxL;
+	m_v3MinG = vector3(m_m4ToWorld * vector4(m_v3MinL, 1));
+	m_v3MaxG = vector3(m_m4ToWorld * vector4(m_v3MaxL, 1));
+
+	vector3 vecList[8];
+	vecList[0] = m_v3MinL;
+	vecList[1] = m_v3MaxL;
+	
+	//Min with all 3 max axes
+	vecList[2] = vector3(m_v3MaxL.x, m_v3MinL.y, m_v3MinL.z);
+	vecList[3] = vector3(m_v3MinL.x, m_v3MaxL.y, m_v3MinL.z);
+	vecList[4] = vector3(m_v3MinL.x, m_v3MinL.y, m_v3MaxL.z);
+	//Max with all three min axes
+	vecList[5] = vector3(m_v3MinL.x, m_v3MaxL.y, m_v3MaxL.z);
+	vecList[6] = vector3(m_v3MaxL.x, m_v3MinL.y, m_v3MaxL.z);
+	vecList[7] = vector3(m_v3MaxL.x, m_v3MaxL.y, m_v3MinL.z);
+
+	for (uint i = 0; i < 8; ++i) {
+		vector3 thisPoint = vector3(m_m4ToWorld * vector4(vecList[i], 1));
+
+		if (m_v3MaxG.x < thisPoint.x) m_v3MaxG.x = thisPoint.x;
+		else if (m_v3MinG.x > thisPoint.x) m_v3MinG.x = thisPoint.x;
+
+		if (m_v3MaxG.y < thisPoint.y) m_v3MaxG.y = thisPoint.y;
+		else if (m_v3MinG.y > thisPoint.y) m_v3MinG.y = thisPoint.y;
+
+		if (m_v3MaxG.z < thisPoint.z) m_v3MaxG.z = thisPoint.z;
+		else if (m_v3MinG.z > thisPoint.z) m_v3MinG.z = thisPoint.z;
+	}
+
 	//----------------------------------------
 
 	//we calculate the distance between min and max vectors
