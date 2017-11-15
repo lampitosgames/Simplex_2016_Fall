@@ -286,7 +286,80 @@ uint MyRigidBody::SAT(MyRigidBody* const a_pOther)
 	Simplex that might help you [eSATResults] feel free to use it.
 	(eSATResults::SAT_NONE has a value of 0)
 	*/
+	//center of A
+	vector3 cA = GetCenterGlobal();
+	//center of B
+	vector3 cB = a_pOther->GetCenterGlobal();
 
-	//there is no axis test that separates this two objects
-	return eSATResults::SAT_NONE;
+	//A half width
+	//vector3 rA = vector3(m_m4ToWorld * vector4(m_v3HalfWidth, 1.0f));
+	vector3 rA = vector3(m_m4ToWorld * vector4(m_v3HalfWidth, 0.0f));
+	//B half width
+	vector3 rB = vector3(a_pOther->m_m4ToWorld * vector4(a_pOther->m_v3HalfWidth, 0.0f));
+
+	//Translation between the two OBB
+	vector3 D = cB - cA;
+
+	//Array to store the axes
+	std::vector<vector3> L(15);
+
+	//Local axes of A
+	L[0] = glm::normalize(vector3(m_m4ToWorld * vector4(AXIS_X, 0.0f))); //Local A x axis
+	m_pMeshMngr->AddLineToRenderList(IDENTITY_M4, cA, cA+vector3(L[0].x*10, L[0].y*10, L[0].z*10), C_RED, C_RED);
+	L[1] = glm::normalize(vector3(m_m4ToWorld * vector4(AXIS_Y, 0.0f))); //Local A y axis
+	m_pMeshMngr->AddLineToRenderList(IDENTITY_M4, cA, cA + vector3(L[1].x * 10, L[1].y * 10, L[1].z * 10), C_RED, C_RED);
+	L[2] = glm::normalize(vector3(m_m4ToWorld * vector4(AXIS_Z, 0.0f))); //Local A z axis
+	m_pMeshMngr->AddLineToRenderList(IDENTITY_M4, cA, cA + vector3(L[2].x * 10, L[2].y * 10, L[2].z * 10), C_RED, C_RED);
+
+	//Local axes of B
+	L[3] = glm::normalize(vector3(a_pOther->m_m4ToWorld * vector4(AXIS_X, 0.0f))); //Local B x axis
+	m_pMeshMngr->AddLineToRenderList(IDENTITY_M4, cB, cB + vector3(L[3].x * 10, L[3].y * 10, L[3].z * 10), C_RED, C_RED);
+	L[4] = glm::normalize(vector3(a_pOther->m_m4ToWorld * vector4(AXIS_Y, 0.0f))); //Local B y axis
+	m_pMeshMngr->AddLineToRenderList(IDENTITY_M4, cB, cB + vector3(L[4].x * 10, L[4].y * 10, L[4].z * 10), C_RED, C_RED);
+	L[5] = glm::normalize(vector3(a_pOther->m_m4ToWorld * vector4(AXIS_Z, 0.0f))); //Local B z axis
+	m_pMeshMngr->AddLineToRenderList(IDENTITY_M4, cB, cB + vector3(L[5].x * 10, L[5].y * 10, L[5].z * 10), C_RED, C_RED);
+
+	//Cross products of every axis
+	L[6]  = glm::normalize(glm::cross(L[0], L[3])); // Ax X Bx
+	L[7]  = glm::normalize(glm::cross(L[0], L[4])); // Ax X By
+	L[8]  = glm::normalize(glm::cross(L[0], L[5])); // Ax X Bz
+	L[9]  = glm::normalize(glm::cross(L[1], L[3])); // Ay X Bx
+	L[10] = glm::normalize(glm::cross(L[1], L[4])); // Ay X By
+	L[11] = glm::normalize(glm::cross(L[1], L[5])); // Ay X Bz
+	L[12] = glm::normalize(glm::cross(L[2], L[3])); // Az X Bx
+	L[13] = glm::normalize(glm::cross(L[2], L[4])); // Az X By
+	L[14] = glm::normalize(glm::cross(L[2], L[5])); // Az X Bz
+
+
+	m_pMeshMngr->AddLineToRenderList(IDENTITY_M4, cA, cB, C_BLUE, C_BLUE);
+	m_pMeshMngr->AddLineToRenderList(IDENTITY_M4, cA, cA + rA, C_BROWN, C_BROWN);
+	m_pMeshMngr->AddLineToRenderList(IDENTITY_M4, cB, cB + rB, C_BROWN, C_BROWN);
+
+
+	//Colliding until proven otherwise
+	bool SATColliding = true;
+	uint axis = -1;
+	//Check every axis
+	for (uint i = 0; i < 15; i++) {
+		float dProj = glm::abs(glm::dot(D, L[i]));
+		float rAProj = glm::abs(glm::dot(rA, L[i]));
+		float rBProj = glm::abs(glm::dot(rB, L[i]));
+
+		//if |D * L| > |rA * L| + |rB * L|, then not colliding
+		if (dProj > rAProj + rBProj) {
+			SATColliding = false;
+			axis = i;
+			break;
+		}
+	}
+
+	if (SATColliding) {
+		return 0;
+	}
+	else {
+		return 1;
+	}
+
+	////there is no axis test that separates this two objects
+	//return eSATResults::SAT_NONE;
 }
