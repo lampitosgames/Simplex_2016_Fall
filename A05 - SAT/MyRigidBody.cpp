@@ -286,38 +286,57 @@ uint MyRigidBody::SAT(MyRigidBody* const a_pOther)
 	Simplex that might help you [eSATResults] feel free to use it.
 	(eSATResults::SAT_NONE has a value of 0)
 	*/
-	//center of A
-	vector3 cA = GetCenterGlobal();
-	//center of B
-	vector3 cB = a_pOther->GetCenterGlobal();
 
-	//A half width
-	//vector3 rA = vector3(m_m4ToWorld * vector4(m_v3HalfWidth, 1.0f));
-	vector3 rA = vector3(m_m4ToWorld * vector4(m_v3HalfWidth, 0.0f));
-	//B half width
-	vector3 rB = vector3(a_pOther->m_m4ToWorld * vector4(a_pOther->m_v3HalfWidth, 0.0f));
+	struct OBB {
+		vector3 c;
+		vector3 u[3];
+		vector3 e;
+	};
+
+
+	OBB a;
+	OBB b;
+
+	//Get OBB centers
+	a.c = GetCenterGlobal();
+	b.c = a_pOther->GetCenterGlobal();
+
+	//Get OBB half widths
+	a.e = GetHalfWidth();
+	b.e = a_pOther->GetHalfWidth();
+
+	//Get OBB local axes in world space
+	//Local axes of A (a.u)
+	a.u[0] = glm::normalize(vector3(m_m4ToWorld * vector4(AXIS_X, 0.0f))); //Local A x axis
+	m_pMeshMngr->AddLineToRenderList(IDENTITY_M4, a.c, a.c + a.u[0], C_RED, C_RED);
+	a.u[1] = glm::normalize(vector3(m_m4ToWorld * vector4(AXIS_Y, 0.0f))); //Local A y axis
+	m_pMeshMngr->AddLineToRenderList(IDENTITY_M4, a.c, a.c + a.u[1], C_RED, C_RED);
+	a.u[2] = glm::normalize(vector3(m_m4ToWorld * vector4(AXIS_Z, 0.0f))); //Local A z axis
+	m_pMeshMngr->AddLineToRenderList(IDENTITY_M4, a.c, a.c + a.u[2], C_RED, C_RED);
+
+	//Local axes of B (b.u)
+	b.u[0] = glm::normalize(vector3(a_pOther->m_m4ToWorld * vector4(AXIS_X, 0.0f))); //Local A x axis
+	m_pMeshMngr->AddLineToRenderList(IDENTITY_M4, b.c, b.c + b.u[0], C_RED, C_RED);
+	b.u[1] = glm::normalize(vector3(a_pOther->m_m4ToWorld * vector4(AXIS_Y, 0.0f))); //Local A y axis
+	m_pMeshMngr->AddLineToRenderList(IDENTITY_M4, b.c, b.c + b.u[1], C_RED, C_RED);
+	b.u[2] = glm::normalize(vector3(a_pOther->m_m4ToWorld * vector4(AXIS_Z, 0.0f))); //Local A z axis
+	m_pMeshMngr->AddLineToRenderList(IDENTITY_M4, b.c, b.c + b.u[2], C_RED, C_RED);
 
 	//Translation between the two OBB
-	vector3 D = cB - cA;
+	vector3 D = b.c - a.c;
 
 	//Array to store the axes
 	std::vector<vector3> L(15);
 
 	//Local axes of A
 	L[0] = glm::normalize(vector3(m_m4ToWorld * vector4(AXIS_X, 0.0f))); //Local A x axis
-	m_pMeshMngr->AddLineToRenderList(IDENTITY_M4, cA, cA+vector3(L[0].x*1, L[0].y*1, L[0].z*1), C_RED, C_RED);
 	L[1] = glm::normalize(vector3(m_m4ToWorld * vector4(AXIS_Y, 0.0f))); //Local A y axis
-	m_pMeshMngr->AddLineToRenderList(IDENTITY_M4, cA, cA + vector3(L[1].x * 1, L[1].y * 1, L[1].z * 1), C_RED, C_RED);
 	L[2] = glm::normalize(vector3(m_m4ToWorld * vector4(AXIS_Z, 0.0f))); //Local A z axis
-	m_pMeshMngr->AddLineToRenderList(IDENTITY_M4, cA, cA + vector3(L[2].x * 1, L[2].y * 1, L[2].z * 1), C_RED, C_RED);
 
 	//Local axes of B
 	L[3] = glm::normalize(vector3(a_pOther->m_m4ToWorld * vector4(AXIS_X, 0.0f))); //Local B x axis
-	m_pMeshMngr->AddLineToRenderList(IDENTITY_M4, cB, cB + vector3(L[3].x * 1, L[3].y * 1, L[3].z * 1), C_RED, C_RED);
 	L[4] = glm::normalize(vector3(a_pOther->m_m4ToWorld * vector4(AXIS_Y, 0.0f))); //Local B y axis
-	m_pMeshMngr->AddLineToRenderList(IDENTITY_M4, cB, cB + vector3(L[4].x * 1, L[4].y * 1, L[4].z * 1), C_RED, C_RED);
 	L[5] = glm::normalize(vector3(a_pOther->m_m4ToWorld * vector4(AXIS_Z, 0.0f))); //Local B z axis
-	m_pMeshMngr->AddLineToRenderList(IDENTITY_M4, cB, cB + vector3(L[5].x * 1, L[5].y * 1, L[5].z * 1), C_RED, C_RED);
 
 	//Cross products of every axis
 	L[6]  = glm::normalize(glm::cross(L[0], L[3])); // Ax X Bx
@@ -331,9 +350,30 @@ uint MyRigidBody::SAT(MyRigidBody* const a_pOther)
 	L[14] = glm::normalize(glm::cross(L[2], L[5])); // Az X Bz
 
 
-	m_pMeshMngr->AddLineToRenderList(IDENTITY_M4, cA, cB, C_BLUE, C_BLUE);
-	m_pMeshMngr->AddLineToRenderList(IDENTITY_M4, cA, cA + rA, C_BROWN, C_BROWN);
-	m_pMeshMngr->AddLineToRenderList(IDENTITY_M4, cB, cB + rB, C_BROWN, C_BROWN);
+
+	//A half width
+	//vector3 rA = vector3(m_m4ToWorld * vector4(m_v3HalfWidth, 1.0f));
+	//vector3 rA = vector3(m_m4ToWorld * vector4(m_v3HalfWidth, 0.0f));
+	vector3 rA = GetHalfWidth();
+
+	vector3 rAList[3];
+	rAList[0] = vector3(rA.x*L[0].x, rA.x*L[0].y, rA.x*L[0].z);
+	rAList[1] = vector3(rA.y*L[1].x, rA.y*L[1].y, rA.y*L[1].z);
+	rAList[2] = vector3(rA.z*L[2].x, rA.z*L[2].y, rA.z*L[2].z);
+
+	//B half width
+	//vector3 rB = vector3(a_pOther->m_m4ToWorld * vector4(a_pOther->m_v3HalfWidth, 0.0f));
+	vector3 rB = a_pOther->GetHalfWidth();
+
+	vector3 rBList[3];
+	rBList[0] = vector3(rB.x*L[3].x, rB.x*L[3].y, rB.x*L[3].z);
+	rBList[1] = vector3(rB.y*L[4].x, rB.y*L[4].y, rB.y*L[4].z);
+	rBList[2] = vector3(rB.z*L[5].x, rB.z*L[5].y, rB.z*L[5].z);
+
+
+	m_pMeshMngr->AddLineToRenderList(IDENTITY_M4, a.c, b.c, C_BLUE, C_BLUE);
+	m_pMeshMngr->AddLineToRenderList(IDENTITY_M4, a.c, a.c + a.e, C_BROWN, C_BROWN);
+	m_pMeshMngr->AddLineToRenderList(IDENTITY_M4, b.c, b.c + b.e, C_BROWN, C_BROWN);
 
 
 	//Colliding until proven otherwise
@@ -341,7 +381,16 @@ uint MyRigidBody::SAT(MyRigidBody* const a_pOther)
 	uint axis = -1;
 	//Check every axis
 	for (uint i = 0; i < 15; i++) {
+		/*
+		½|Proj( BoxA )| = |Proj ( WA*Ax )| + |Proj ( HA*Ay )| + |Proj( DA*Az )|
+						= | ( WA*Ax ) • L | + | ( HA*Ay ) • L | + |( DA*Az ) • L |
+		*/
 		float dProj = glm::abs(glm::dot(D, L[i]));
+
+		//float rAProj = glm::abs(glm::dot(rAList[0], L[i])) + glm::abs(glm::dot(rAList[1], L[i])) + glm::abs(glm::dot(rAList[2], L[i]));
+		//
+		//float rBProj = glm::abs(glm::dot(rBList[0], L[i])) + glm::abs(glm::dot(rBList[1], L[i])) + glm::abs(glm::dot(rBList[2], L[i]));
+
 		float rAProj = glm::abs(glm::dot(rA, L[i]));
 		float rBProj = glm::abs(glm::dot(rB, L[i]));
 
