@@ -247,6 +247,8 @@ private:
 	OUTPUT: 0 for colliding, other = first axis that succeeds test
 	*/
 	uint SAT(MyRigidBody* const a_pOther);
+	//Draws a separation plane (used for drawing the SAT extra credit)
+	void AddSeparationPlane(vector3 up, vector3 right, vector3 color, vector3 center, vector3 dist);
 };//class
 
 } //namespace Simplex

@@ -232,7 +232,7 @@ bool MyRigidBody::IsColliding(MyRigidBody* const a_pOther)
 	//if they are colliding check the SAT
 	if (bColliding)
 	{
-		if(SAT(a_pOther) != eSATResults::SAT_NONE)
+		if (SAT(a_pOther) != eSATResults::SAT_NONE)
 			bColliding = false;// reset to false
 	}
 
@@ -277,14 +277,17 @@ void MyRigidBody::AddToRenderList(void)
 uint MyRigidBody::SAT(MyRigidBody* const a_pOther)
 {
 	/*
-	Your code goes here instead of this comment;
+	SAT by Daniel Timko
 
-	For this method, if there is an axis that separates the two objects
-	then the return will be different than 0; 1 for any separating axis
-	is ok if you are not going for the extra credit, if you could not
-	find a separating axis you need to return 0, there is an enum in
-	Simplex that might help you [eSATResults] feel free to use it.
-	(eSATResults::SAT_NONE has a value of 0)
+	Check all 15 axes
+	Pulled a lot from the book, but I understand that if a plane can be drawn between 
+	two boxes, those boxes aren't colliding
+
+	Basically, get all 15 axes (the local of both A and B, and every possible cross product) and 
+	project b.c - a.c onto every one.  Then, project the half widths.  If the sum of the half widths
+	projection magnitudes is less than the distance projection magnitude, that axis separates the objects
+
+	That is simplified, but yeah.  General explanation.  I'm better at math than I am at words
 	*/
 
 	struct OBB {
@@ -293,9 +296,8 @@ uint MyRigidBody::SAT(MyRigidBody* const a_pOther)
 		vector3 e;
 	};
 
-
-	OBB a;
-	OBB b;
+	//OBB structs for both rigid bodies
+	OBB a, b;
 
 	//Get OBB centers
 	a.c = GetCenterGlobal();
@@ -308,117 +310,174 @@ uint MyRigidBody::SAT(MyRigidBody* const a_pOther)
 	//Get OBB local axes in world space
 	//Local axes of A (a.u)
 	a.u[0] = glm::normalize(vector3(m_m4ToWorld * vector4(AXIS_X, 0.0f))); //Local A x axis
-	m_pMeshMngr->AddLineToRenderList(IDENTITY_M4, a.c, a.c + a.u[0], C_RED, C_RED);
 	a.u[1] = glm::normalize(vector3(m_m4ToWorld * vector4(AXIS_Y, 0.0f))); //Local A y axis
-	m_pMeshMngr->AddLineToRenderList(IDENTITY_M4, a.c, a.c + a.u[1], C_RED, C_RED);
 	a.u[2] = glm::normalize(vector3(m_m4ToWorld * vector4(AXIS_Z, 0.0f))); //Local A z axis
-	m_pMeshMngr->AddLineToRenderList(IDENTITY_M4, a.c, a.c + a.u[2], C_RED, C_RED);
-
 	//Local axes of B (b.u)
 	b.u[0] = glm::normalize(vector3(a_pOther->m_m4ToWorld * vector4(AXIS_X, 0.0f))); //Local A x axis
-	m_pMeshMngr->AddLineToRenderList(IDENTITY_M4, b.c, b.c + b.u[0], C_RED, C_RED);
 	b.u[1] = glm::normalize(vector3(a_pOther->m_m4ToWorld * vector4(AXIS_Y, 0.0f))); //Local A y axis
-	m_pMeshMngr->AddLineToRenderList(IDENTITY_M4, b.c, b.c + b.u[1], C_RED, C_RED);
 	b.u[2] = glm::normalize(vector3(a_pOther->m_m4ToWorld * vector4(AXIS_Z, 0.0f))); //Local A z axis
-	m_pMeshMngr->AddLineToRenderList(IDENTITY_M4, b.c, b.c + b.u[2], C_RED, C_RED);
 
-	//Translation between the two OBB
-	vector3 D = b.c - a.c;
+	//Vars used for SAT
+	float ra, rb;
+	matrix3 R, AbsR;
 
-	//Array to store the axes
-	std::vector<vector3> L(15);
-
-	//Local axes of A
-	L[0] = glm::normalize(vector3(m_m4ToWorld * vector4(AXIS_X, 0.0f))); //Local A x axis
-	L[1] = glm::normalize(vector3(m_m4ToWorld * vector4(AXIS_Y, 0.0f))); //Local A y axis
-	L[2] = glm::normalize(vector3(m_m4ToWorld * vector4(AXIS_Z, 0.0f))); //Local A z axis
-
-	//Local axes of B
-	L[3] = glm::normalize(vector3(a_pOther->m_m4ToWorld * vector4(AXIS_X, 0.0f))); //Local B x axis
-	L[4] = glm::normalize(vector3(a_pOther->m_m4ToWorld * vector4(AXIS_Y, 0.0f))); //Local B y axis
-	L[5] = glm::normalize(vector3(a_pOther->m_m4ToWorld * vector4(AXIS_Z, 0.0f))); //Local B z axis
-
-	//Cross products of every axis
-	L[6]  = glm::normalize(glm::cross(L[0], L[3])); // Ax X Bx
-	L[7]  = glm::normalize(glm::cross(L[0], L[4])); // Ax X By
-	L[8]  = glm::normalize(glm::cross(L[0], L[5])); // Ax X Bz
-	L[9]  = glm::normalize(glm::cross(L[1], L[3])); // Ay X Bx
-	L[10] = glm::normalize(glm::cross(L[1], L[4])); // Ay X By
-	L[11] = glm::normalize(glm::cross(L[1], L[5])); // Ay X Bz
-	L[12] = glm::normalize(glm::cross(L[2], L[3])); // Az X Bx
-	L[13] = glm::normalize(glm::cross(L[2], L[4])); // Az X By
-	L[14] = glm::normalize(glm::cross(L[2], L[5])); // Az X Bz
-
-
-
-	//A half width
-	//vector3 rA = vector3(m_m4ToWorld * vector4(m_v3HalfWidth, 1.0f));
-	//vector3 rA = vector3(m_m4ToWorld * vector4(m_v3HalfWidth, 0.0f));
-	vector3 rA = GetHalfWidth();
-
-	vector3 rAList[3];
-	rAList[0] = vector3(rA.x*L[0].x, rA.x*L[0].y, rA.x*L[0].z);
-	rAList[1] = vector3(rA.y*L[1].x, rA.y*L[1].y, rA.y*L[1].z);
-	rAList[2] = vector3(rA.z*L[2].x, rA.z*L[2].y, rA.z*L[2].z);
-
-	//B half width
-	//vector3 rB = vector3(a_pOther->m_m4ToWorld * vector4(a_pOther->m_v3HalfWidth, 0.0f));
-	vector3 rB = a_pOther->GetHalfWidth();
-
-	vector3 rBList[3];
-	rBList[0] = vector3(rB.x*L[3].x, rB.x*L[3].y, rB.x*L[3].z);
-	rBList[1] = vector3(rB.y*L[4].x, rB.y*L[4].y, rB.y*L[4].z);
-	rBList[2] = vector3(rB.z*L[5].x, rB.z*L[5].y, rB.z*L[5].z);
-
-
-	m_pMeshMngr->AddLineToRenderList(IDENTITY_M4, a.c, b.c, C_BLUE, C_BLUE);
-	m_pMeshMngr->AddLineToRenderList(IDENTITY_M4, a.c, a.c + a.e, C_BROWN, C_BROWN);
-	m_pMeshMngr->AddLineToRenderList(IDENTITY_M4, b.c, b.c + b.e, C_BROWN, C_BROWN);
-
-
-	//Colliding until proven otherwise
-	bool SATColliding = true;
-	uint axis = -1;
-	//Check every axis
-	for (uint i = 0; i < 15; i++) {
-		/*
-		½|Proj( BoxA )| = |Proj ( WA*Ax )| + |Proj ( HA*Ay )| + |Proj( DA*Az )|
-						= | ( WA*Ax ) • L | + | ( HA*Ay ) • L | + |( DA*Az ) • L |
-		*/
-		float dProj = glm::abs(glm::dot(D, L[i]));
-
-		//float rAProj = glm::abs(glm::dot(rAList[0], L[i])) + glm::abs(glm::dot(rAList[1], L[i])) + glm::abs(glm::dot(rAList[2], L[i]));
-		//
-		//float rBProj = glm::abs(glm::dot(rBList[0], L[i])) + glm::abs(glm::dot(rBList[1], L[i])) + glm::abs(glm::dot(rBList[2], L[i]));
-
-		float rAProj = glm::abs(glm::dot(rA, L[i]));
-		float rBProj = glm::abs(glm::dot(rB, L[i]));
-
-		//if |D * L| > |rA * L| + |rB * L|, then not colliding
-		if (dProj > rAProj + rBProj) {
-
-			m_pMeshMngr->AddLineToRenderList(IDENTITY_M4, vector3(0, 0, 0), vector3(L[i].x * 10, L[i].y * 10, L[i].z * 10), C_RED, C_RED);
-			vector3 dProjVec = vector3(L[i].x * dProj, L[i].y*dProj, L[i].z*dProj);
-			vector3 rAProjVec = vector3(L[i].x * rAProj, L[i].y*rAProj, L[i].z*rAProj);
-			vector3 rBProjVec = vector3(L[i].x * rBProj, L[i].y*rBProj, L[i].z*rBProj);
-
-			m_pMeshMngr->AddLineToRenderList(IDENTITY_M4, vector3(0, 0, 0), dProjVec, C_BLUE, C_BLUE);
-			m_pMeshMngr->AddLineToRenderList(IDENTITY_M4, vector3(0, 0.5, 0), rAProjVec + vector3(0, 0.5, 0), C_GREEN, C_GREEN);
-			m_pMeshMngr->AddLineToRenderList(IDENTITY_M4, rAProjVec + vector3(0, 0.5, 0), rBProjVec + vector3(0, 0.5, 0), C_PURPLE, C_PURPLE);
-
-			SATColliding = false;
-			axis = i;
-			break;
+	//Compute rotation matrix
+	for (int i = 0; i < 3; i++) {
+		for (int j = 0; j < 3; j++) {
+			//Every axis from b projected onto every axis from a.  This rotation matrix will transform things from b's
+			//local space to a's local space
+			R[i][j] = glm::dot(a.u[i], b.u[j]);
 		}
 	}
 
-	if (SATColliding) {
-		return 0;
-	}
-	else {
-		return 1;
+	//Translation between the two OBB
+	vector3 t = b.c - a.c;
+	//Transform the translation into a's local coordinates by projecting each component onto a's unit axes
+	t = vector3(glm::dot(t, a.u[0]), glm::dot(t, a.u[1]), glm::dot(t, a.u[2]));
+
+	//Absolute value every dot product in the rotation matrix and make sure nothing is equal to zero to avoid null vectors
+	for (int i = 0; i < 3; i++) {
+		for (int j = 0; j < 3; j++) {
+			//Make sure that nothing is zero using epsilon
+			//Also remove the sign from the dot product since we are only interested in lengths
+			AbsR[i][j] = glm::abs(R[i][j]) + FLT_EPSILON;
+		}
 	}
 
-	////there is no axis test that separates this two objects
-	//return eSATResults::SAT_NONE;
+	//Test axes L = A0, L = A1, L = A2
+	for (int i = 0; i < 3; i++) {
+		//Get half width along this axis for object A
+		ra = a.e[i];
+		//Get b's half width projected onto this axis
+		//rb = b.half[x] * proj(b.u[x], a.u[i]) + b.half[y] * proj(b.u[y], a.u[i]) + b.half[z] * proj(b.u[z], a.u[i])
+		rb = b.e[0] * AbsR[i][0] + b.e[1] * AbsR[i][1] + b.e[2] * AbsR[i][2];
+		//If the length of the distance between the objects on this axis is longer than both half widths
+		if (glm::abs(t[i]) > ra + rb) {
+			//Seperation axis found!  Which one?  0 = a.u[x], 1 = a.u[y], 2 = a.u[z]
+			if (i == 0) {
+				//Display a separation plane.  The separation axis is the up vector
+				AddSeparationPlane(a.u[0], a.u[2], C_RED, a.c, glm::normalize(b.c - a.c)*(a.e[0] + 0.2f));
+				//Return the axis of separation
+				return eSATResults::SAT_AX;
+			}
+			else if (i == 1) {
+				//Display a separation plane.  The separation axis is the up vector
+				AddSeparationPlane(a.u[1], a.u[0], C_GREEN, a.c, glm::normalize(b.c - a.c)*(a.e[1] + 0.2f));
+				//Return the axis of separation
+				return eSATResults::SAT_AY;
+			}
+			else if (i == 2) {
+				//Display a separation plane.  The separation axis is the up vector
+				AddSeparationPlane(a.u[2], a.u[0], C_BLUE, a.c, glm::normalize(b.c - a.c)*(a.e[2] + 0.2f));
+				//Return the axis of separation
+				return eSATResults::SAT_AZ;
+			}
+		}
+	}
+
+	//Test axes L = B0, L = B1, L = B2
+	for (int i = 0; i < 3; i++) {
+		//Get a's half width projected onto this axis
+		//rb = a.half[x] * proj(b.u[i], a.u[x]) + a.half[y] * proj(b.u[i], a.u[y]) + a.half[z] * proj(b.u[i], a.u[z])
+		ra = a.e[0] * AbsR[0][i] + a.e[1] * AbsR[1][i] + a.e[2] * AbsR[2][i];
+		//Get half width along this axis for object B
+		rb = b.e[i];
+		//If the length of the distance between the objects (projected onto this axis, since it is in the local space of A) 
+		//is longer than both of the half widths
+		if (glm::abs(t[0] * R[0][i] + t[1] * R[1][i] + t[2] * R[2][i]) > ra + rb) {
+			//Seperation axis found!  Which one? 0 = b.u[x], 1 = b.u[y], 2 = b.u[z]
+			if (i == 0) {
+				//Display a separation plane.  The separation axis is the up vector
+				AddSeparationPlane(b.u[0], b.u[2], C_RED, b.c, glm::normalize(a.c - b.c)*(b.e[0] + 0.2f));
+				//Return the axis of separation
+				return eSATResults::SAT_BX;
+			}
+			else if (i == 1) {
+				//Display a separation plane.  The separation axis is the up vector
+				AddSeparationPlane(b.u[1], b.u[0], C_GREEN, b.c, glm::normalize(a.c - b.c)*(b.e[1] + 0.2f));
+				//Return the axis of separation
+				return eSATResults::SAT_BY;
+			}
+			else if (i == 2) {
+				//Display a separation plane.  The separation axis is the up vector
+				AddSeparationPlane(b.u[2], b.u[0], C_BLUE, b.c, glm::normalize(a.c - b.c)*(b.e[2] + 0.2f));
+				//Return the axis of separation
+				return eSATResults::SAT_BZ;
+			}
+		}
+	}
+
+	//For every local A axis (aa)
+	for (int aa = 0; aa < 3; aa++) {
+		//For every local B axis (ba)
+		for (int ba = 0; ba < 3; ba++) {
+			//Test the cross product  aa X ba
+			//Get the opposite axes for A
+			int ao1 = (aa + 1) % 3;
+			int ao2 = (aa + 2) % 3;
+			//Get the opposite axes for B
+			int bo1 = (ba + 1) % 3;
+			int bo2 = (ba + 2) % 3;
+
+			//Take A's halfWidth values not on this A axis
+			//multiply each by the opposite A axis after its been projected onto this B axis
+			// a.half[ao1] * proj(a.u[ao2], b.u[ba]) + a.half[ao2] * proj(a.u[ao1], b.u[ba])
+			ra = a.e[ao1] * AbsR[ao2][ba] + a.e[ao2] * AbsR[ao1][ba];
+			//Take b's halfWidth values not on this B axis
+			//multiply each by the opposite B axis after its been projected onto this A axis
+			// b.half[bo1] * proj(b.u[bo2], a.u[aa]) + b.half[bo2] * proj(b.u[bo1], a.u[aa])
+			rb = b.e[bo1] * AbsR[aa][bo2] + b.e[bo2] * AbsR[aa][bo1];
+
+			//Get t's magnitude in terms of this axis
+			//Project t's components not on this A axis
+			//onto the dot of the other A axes and this B axis
+			float tProj = glm::abs(t[ao2] * R[ao1][ba] - t[ao1] * R[ao2][ba]);
+
+			//If the length of the distance between the objects (projected onto this axis) 
+			//is longer than both of the half widths, this is the separation axis!
+			if (tProj > ra + rb) {
+				//Display a separation plane by crossing the current axes for the up vector (plane normal)
+				//and passing in this A axis as the right vector
+				//NOTE: the 9 planes found via cross products don't have unique colors.  I would have had to hard code them 
+				//and the rubric said not to do that
+				AddSeparationPlane(glm::cross(a.u[aa], b.u[ba]), a.u[aa], C_ORANGE, a.c, glm::normalize(b.c - a.c)*(a.e[0] + 0.2f));
+
+				//Return the axis of separation
+				//Skip the 6 enum values for the object's local coordinates and then add the current axes together
+				//For instance, AX x BX would be 6 since those would both be 0
+				//              6 + 3*aa + ba = axis enum
+				//AXxBX = 6  :: 6 + 3* 0 +  0 = 6
+				//AXxBY = 7  :: 6 + 3* 0 +  1 = 7
+				//AXxBZ = 8  :: 6 + 3* 0 +  2 = 8
+				//AYxBX = 9  :: 6 + 3* 1 +  0 = 9
+				//AYxBY = 10 :: 6 + 3* 1 +  1 = 10
+				//AYxBZ = 11 :: 6 + 3* 1 +  2 = 11
+				//AZxBX = 12 :: 6 + 3* 2 +  0 = 12
+				//AZxBY = 13 :: 6 + 3* 2 +  1 = 13
+				//AZxBZ = 14 :: 6 + 3* 2 +  2 = 14
+				return (6 + 3*aa + ba);
+			}
+		}
+	}
+	//there is no axis test that separates this two objects
+	return eSATResults::SAT_NONE;
+}
+
+//Really simple method that draws a separation plane next to an object given an up (normal) vector and a right vector
+//Draws it centered at center + dist.
+//I coded so this doesn't clip the mesh except in some special cases where the up vector is a computed cross product
+void MyRigidBody::AddSeparationPlane(vector3 up, vector3 right, vector3 color, vector3 center, vector3 dist) {
+	//Calculate the forward and reverse forward vector (the plane needs to be created twice so it can be seen from all angles)
+	//To do this, cross the up and right vectors in opposite orders
+	vector3 forward  = glm::cross(up, right);
+	vector3 forwardR = glm::cross(right, up);
+
+	//Create a plane transformation matrix.  Translate it to the provided world location, rotate it using the right, forward, and up 
+	//vectors, and then scale it so it is large enough to be visible
+	matrix4 planeToWorld  = glm::translate(center + dist) * (matrix4)matrix3(right, forward, up) * glm::scale(vector3(2.5f, 2.5f, 2.5f));
+	matrix4 planeToWorldR = glm::translate(center + dist) * (matrix4)matrix3(right, forwardR, up) * glm::scale(vector3(2.5f, 2.5f, 2.5f));
+
+	//Add both planes to the mesh manager render list
+	m_pMeshMngr->AddPlaneToRenderList(planeToWorld, color, 1);
+	m_pMeshMngr->AddPlaneToRenderList(planeToWorldR, color, 1);
 }
