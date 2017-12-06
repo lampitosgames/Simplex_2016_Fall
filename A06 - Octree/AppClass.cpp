@@ -28,7 +28,7 @@ void Application::InitVariables(void)
 			uIndex++;
 			m_pEntityMngr->AddEntity("Minecraft\\Cube.obj");
 			vector3 v3Position = vector3(glm::sphericalRand(34.0f));
-			matrix4 m4Position = glm::translate(v3Position);
+			matrix4 m4Position = glm::translate(v3Position) * glm::rotate(25.0f, vector3(glm::sphericalRand(10.0f)));
 			m_pEntityMngr->SetModelMatrix(m4Position);
 
 			Octree::s_qToInsert.push_back(m_pEntityMngr->GetEntityCount() - 1);

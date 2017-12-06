@@ -9,12 +9,13 @@ using namespace Simplex;
 
 //Init static vars
 uint Octree::s_uOctantCount = 0;
-uint Octree::s_uMaxLevel = 3;
+uint Octree::s_uMaxLevel = 4;
 uint Octree::s_uIdealEntityCount = 5;
 Octree* Octree::s_pRoot = nullptr;
 bool Octree::s_bTreeReady = false;
 bool Octree::s_bTreeBuilt = false;
 std::deque<uint> Octree::s_qToInsert;
+
 void Octree::Init(void) {
 	//If there is no root yet, this is the root
 	if (Octree::s_pRoot == nullptr) {
@@ -63,6 +64,8 @@ void Octree::UpdateTree(void) {
 		}
 		//Recursively build the tree
 		BuildTree();
+		//Give octant ids to entities that are inside them
+		AssignIDToEntity();
 	} else {
 		while (Octree::s_qToInsert.size() != 0) {
 			Insert(Octree::s_qToInsert.front());
@@ -169,6 +172,7 @@ Octree* Octree::CreateChildOctant(BoundingBox bounds, std::vector<uint> entities
 	}
 	Octree* newOctant = new Octree(bounds, entities);
 	newOctant->m_pParent = this;
+	newOctant->m_uLevel = m_uLevel + 1;
 	return newOctant;
 }
 
@@ -180,6 +184,19 @@ Octree* Octree::CreateChildOctant(BoundingBox bounds, uint entityIndex) {
 
 void Octree::Insert(uint a_uEntityIndex) {}
 
+void Simplex::Octree::AssignIDToEntity(void) {
+	for (uint i = 0; i < m_lEntities.size(); i++) {
+		m_pEntityMngr->GetEntity(m_lEntities[i])->m_octantID = m_uID;
+	}
+	std::cout << m_lEntities.size() << std::endl;
+	//std::cout << m_uID << std::endl;
+	//Loop through children and call their AssignIDToEntity functions
+	for (uint c = 0; c < 8; c++) {
+		//Null check
+		if (m_pChildren[c] == nullptr) { continue; }
+		m_pChildren[c]->AssignIDToEntity();
+	}
+}
 
 // Generates the bounding box for this octant based on the objects it contains
 void Octree::GenerateExtents(void) {

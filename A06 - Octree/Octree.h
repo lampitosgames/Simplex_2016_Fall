@@ -105,7 +105,7 @@ namespace Simplex {
 		//Insert entity into tree
 		void Insert(uint a_uEntityIndex);
 		//Traverse the tree down to the leafs and give all objects the index of the octant
-		//void AssignIDToEntity(void);
+		void AssignIDToEntity(void);
 
 		//Generates a bounding area based on the entities in the list
 		void GenerateExtents(void);
