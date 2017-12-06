@@ -1,8 +1,7 @@
 #include "MyRigidBody.h"
 using namespace Simplex;
 //Allocation
-void MyRigidBody::Init(void)
-{
+void MyRigidBody::Init(void) {
 	m_pMeshMngr = MeshManager::GetInstance();
 	m_bVisibleBS = false;
 	m_bVisibleOBB = true;
@@ -22,15 +21,19 @@ void MyRigidBody::Init(void)
 	m_v3MaxG = ZERO_V3;
 
 	m_v3HalfWidth = ZERO_V3;
+	m_v3GHalfWidth = ZERO_V3;
 	m_v3ARBBSize = ZERO_V3;
+
+	m_fXScale = 1.0f;
+	m_fYScale = 1.0f;
+	m_fZScale = 1.0f;
 
 	m_m4ToWorld = IDENTITY_M4;
 
 	m_nCollidingCount = 0;
 	m_CollidingArray = nullptr;
 }
-void MyRigidBody::Swap(MyRigidBody& other)
-{
+void MyRigidBody::Swap(MyRigidBody& other) {
 	std::swap(m_pMeshMngr, other.m_pMeshMngr);
 	std::swap(m_bVisibleBS, other.m_bVisibleBS);
 	std::swap(m_bVisibleOBB, other.m_bVisibleOBB);
@@ -50,15 +53,19 @@ void MyRigidBody::Swap(MyRigidBody& other)
 	std::swap(m_v3MaxG, other.m_v3MaxG);
 
 	std::swap(m_v3HalfWidth, other.m_v3HalfWidth);
+	std::swap(m_v3GHalfWidth, other.m_v3GHalfWidth);
 	std::swap(m_v3ARBBSize, other.m_v3ARBBSize);
+
+	std::swap(m_fXScale, other.m_fXScale);
+	std::swap(m_fYScale, other.m_fYScale);
+	std::swap(m_fZScale, other.m_fZScale);
 
 	std::swap(m_m4ToWorld, other.m_m4ToWorld);
 
 	std::swap(m_nCollidingCount, other.m_nCollidingCount);
 	std::swap(m_CollidingArray, other.m_CollidingArray);
 }
-void MyRigidBody::Release(void)
-{
+void MyRigidBody::Release(void) {
 	m_pMeshMngr = nullptr;
 	ClearCollidingList();
 }
@@ -77,13 +84,12 @@ void MyRigidBody::SetColorNotColliding(vector3 a_v3Color) { m_v3ColorNotCollidin
 vector3 MyRigidBody::GetCenterLocal(void) { return m_v3CenterL; }
 vector3 MyRigidBody::GetMinLocal(void) { return m_v3MinL; }
 vector3 MyRigidBody::GetMaxLocal(void) { return m_v3MaxL; }
-vector3 MyRigidBody::GetCenterGlobal(void){ return m_v3CenterG; }
+vector3 MyRigidBody::GetCenterGlobal(void) { return m_v3CenterG; }
 vector3 MyRigidBody::GetMinGlobal(void) { return m_v3MinG; }
 vector3 MyRigidBody::GetMaxGlobal(void) { return m_v3MaxG; }
 vector3 MyRigidBody::GetHalfWidth(void) { return m_v3HalfWidth; }
 matrix4 MyRigidBody::GetModelMatrix(void) { return m_m4ToWorld; }
-void MyRigidBody::SetModelMatrix(matrix4 a_m4ModelMatrix)
-{
+void MyRigidBody::SetModelMatrix(matrix4 a_m4ModelMatrix) {
 	//to save some calculations if the model matrix is the same there is nothing to do here
 	if (a_m4ModelMatrix == m_m4ToWorld)
 		return;
@@ -108,8 +114,7 @@ void MyRigidBody::SetModelMatrix(matrix4 a_m4ModelMatrix)
 	v3Corner[7] = m_v3MaxL;
 
 	//Place them in world space
-	for (uint uIndex = 0; uIndex < 8; ++uIndex)
-	{
+	for (uint uIndex = 0; uIndex < 8; ++uIndex) {
 		v3Corner[uIndex] = vector3(m_m4ToWorld * vector4(v3Corner[uIndex], 1.0f));
 	}
 
@@ -117,8 +122,7 @@ void MyRigidBody::SetModelMatrix(matrix4 a_m4ModelMatrix)
 	m_v3MaxG = m_v3MinG = v3Corner[0];
 
 	//get the new max and min for the global box
-	for (uint i = 1; i < 8; ++i)
-	{
+	for (uint i = 1; i < 8; ++i) {
 		if (m_v3MaxG.x < v3Corner[i].x) m_v3MaxG.x = v3Corner[i].x;
 		else if (m_v3MinG.x > v3Corner[i].x) m_v3MinG.x = v3Corner[i].x;
 
@@ -131,10 +135,20 @@ void MyRigidBody::SetModelMatrix(matrix4 a_m4ModelMatrix)
 
 	//we calculate the distance between min and max vectors
 	m_v3ARBBSize = m_v3MaxG - m_v3MinG;
+
+	//Re-calculate the global scale of the object
+	m_fXScale = glm::length(vector3(m_m4ToWorld[0][0], m_m4ToWorld[0][1], m_m4ToWorld[0][2]));
+	m_fYScale = glm::length(vector3(m_m4ToWorld[1][0], m_m4ToWorld[1][1], m_m4ToWorld[1][2]));
+	m_fZScale = glm::length(vector3(m_m4ToWorld[2][0], m_m4ToWorld[2][1], m_m4ToWorld[2][2]));
+
+	//Calculate the global half width
+	m_v3GHalfWidth = (m_v3MaxL - m_v3MinL) / 2.0f;
+	m_v3GHalfWidth.x *= m_fXScale;
+	m_v3GHalfWidth.y *= m_fYScale;
+	m_v3GHalfWidth.z *= m_fZScale;
 }
 //The big 3
-MyRigidBody::MyRigidBody(std::vector<vector3> a_pointList)
-{
+MyRigidBody::MyRigidBody(std::vector<vector3> a_pointList) {
 	Init();
 	//Count the points of the incoming list
 	uint uVertexCount = a_pointList.size();
@@ -147,8 +161,7 @@ MyRigidBody::MyRigidBody(std::vector<vector3> a_pointList)
 	m_v3MaxL = m_v3MinL = a_pointList[0];
 
 	//Get the max and min out of the list
-	for (uint i = 1; i < uVertexCount; ++i)
-	{
+	for (uint i = 1; i < uVertexCount; ++i) {
 		if (m_v3MaxL.x < a_pointList[i].x) m_v3MaxL.x = a_pointList[i].x;
 		else if (m_v3MinL.x > a_pointList[i].x) m_v3MinL.x = a_pointList[i].x;
 
@@ -168,12 +181,16 @@ MyRigidBody::MyRigidBody(std::vector<vector3> a_pointList)
 
 	//we calculate the distance between min and max vectors
 	m_v3HalfWidth = (m_v3MaxL - m_v3MinL) / 2.0f;
+	m_v3GHalfWidth = m_v3HalfWidth;
+
+	m_fXScale = 1.0f;
+	m_fYScale = 1.0f;
+	m_fZScale = 1.0f;
 
 	//Get the distance between the center and either the min or the max
 	m_fRadius = glm::distance(m_v3CenterL, m_v3MinL);
 }
-MyRigidBody::MyRigidBody(MyRigidBody const& other)
-{
+MyRigidBody::MyRigidBody(MyRigidBody const& other) {
 	m_pMeshMngr = other.m_pMeshMngr;
 
 	m_bVisibleBS = other.m_bVisibleBS;
@@ -194,17 +211,20 @@ MyRigidBody::MyRigidBody(MyRigidBody const& other)
 	m_v3MaxG = other.m_v3MaxG;
 
 	m_v3HalfWidth = other.m_v3HalfWidth;
+	m_v3GHalfWidth = other.m_v3GHalfWidth;
 	m_v3ARBBSize = other.m_v3ARBBSize;
+
+	m_fXScale = other.m_fXScale;
+	m_fYScale = other.m_fYScale;
+	m_fZScale = other.m_fZScale;
 
 	m_m4ToWorld = other.m_m4ToWorld;
 
 	m_nCollidingCount = other.m_nCollidingCount;
 	m_CollidingArray = other.m_CollidingArray;
 }
-MyRigidBody& MyRigidBody::operator=(MyRigidBody const& other)
-{
-	if (this != &other)
-	{
+MyRigidBody& MyRigidBody::operator=(MyRigidBody const& other) {
+	if (this != &other) {
 		Release();
 		Init();
 		MyRigidBody temp(other);
@@ -214,8 +234,7 @@ MyRigidBody& MyRigidBody::operator=(MyRigidBody const& other)
 }
 MyRigidBody::~MyRigidBody() { Release(); };
 //--- other Methods
-void MyRigidBody::AddCollisionWith(MyRigidBody* other)
-{
+void MyRigidBody::AddCollisionWith(MyRigidBody* other) {
 	//if its already in the list return
 	if (IsInCollidingArray(other))
 		return;
@@ -227,8 +246,7 @@ void MyRigidBody::AddCollisionWith(MyRigidBody* other)
 	//insert the entry
 	PRigidBody* pTemp;
 	pTemp = new PRigidBody[m_nCollidingCount + 1];
-	if (m_CollidingArray)
-	{
+	if (m_CollidingArray) {
 		memcpy(pTemp, m_CollidingArray, sizeof(MyRigidBody*) * m_nCollidingCount);
 		delete[] m_CollidingArray;
 		m_CollidingArray = nullptr;
@@ -238,23 +256,19 @@ void MyRigidBody::AddCollisionWith(MyRigidBody* other)
 
 	++m_nCollidingCount;
 }
-void MyRigidBody::RemoveCollisionWith(MyRigidBody* other)
-{
+void MyRigidBody::RemoveCollisionWith(MyRigidBody* other) {
 	//if there are no dimensions return
 	if (m_nCollidingCount == 0)
 		return;
 
 	//we look one by one if its the one wanted
-	for (uint i = 0; i < m_nCollidingCount; i++)
-	{
-		if (m_CollidingArray[i] == other)
-		{
+	for (uint i = 0; i < m_nCollidingCount; i++) {
+		if (m_CollidingArray[i] == other) {
 			//if it is, then we swap it with the last one and then we pop
 			std::swap(m_CollidingArray[i], m_CollidingArray[m_nCollidingCount - 1]);
 			PRigidBody* pTemp;
 			pTemp = new PRigidBody[m_nCollidingCount - 1];
-			if (m_CollidingArray)
-			{
+			if (m_CollidingArray) {
 				memcpy(pTemp, m_CollidingArray, sizeof(uint) * (m_nCollidingCount - 1));
 				delete[] m_CollidingArray;
 				m_CollidingArray = nullptr;
@@ -266,39 +280,19 @@ void MyRigidBody::RemoveCollisionWith(MyRigidBody* other)
 		}
 	}
 }
-void MyRigidBody::ClearCollidingList(void)
-{
+void MyRigidBody::ClearCollidingList(void) {
 	m_nCollidingCount = 0;
-	if (m_CollidingArray)
-	{
+	if (m_CollidingArray) {
 		delete[] m_CollidingArray;
 		m_CollidingArray = nullptr;
 	}
 }
-uint MyRigidBody::SAT(MyRigidBody* const a_pOther)
-{
-	/*
-	Your code goes here instead of this comment;
-
-	For this method, if there is an axis that separates the two objects
-	then the return will be different than 0; 1 for any separating axis
-	is ok if you are not going for the extra credit, if you could not
-	find a separating axis you need to return 0, there is an enum in
-	Simplex that might help you [eSATResults] feel free to use it.
-	(eSATResults::SAT_NONE has a value of 0)
-	*/
-
-	//there is no axis test that separates this two objects
-	return 0;
-}
-bool MyRigidBody::IsColliding(MyRigidBody* const a_pOther)
-{
+bool MyRigidBody::IsColliding(MyRigidBody* const a_pOther) {
 	//check if spheres are colliding
 	bool bColliding = true;
 	//bColliding = (glm::distance(GetCenterGlobal(), other->GetCenterGlobal()) < m_fRadius + other->m_fRadius);
 	//if they are check the Axis Aligned Bounding Box
-	if (bColliding) //they are colliding with bounding sphere
-	{
+	if (bColliding) {//they are colliding with bounding sphere
 		if (this->m_v3MaxG.x < a_pOther->m_v3MinG.x) //this to the right of other
 			bColliding = false;
 		if (this->m_v3MinG.x > a_pOther->m_v3MaxG.x) //this to the left of other
@@ -314,54 +308,251 @@ bool MyRigidBody::IsColliding(MyRigidBody* const a_pOther)
 		if (this->m_v3MinG.z > a_pOther->m_v3MaxG.z) //this in front of other
 			bColliding = false;
 
-		if (bColliding) //they are colliding with bounding box also
-		{
+		if (bColliding) {//they are colliding with bounding box also
 			this->AddCollisionWith(a_pOther);
 			a_pOther->AddCollisionWith(this);
-		}
-		else //they are not colliding with bounding box
-		{
+		} else {//they are not colliding with bounding box
 			this->RemoveCollisionWith(a_pOther);
 			a_pOther->RemoveCollisionWith(this);
 		}
-	}
-	else //they are not colliding with bounding sphere
-	{
+	} else {//they are not colliding with bounding sphere
 		this->RemoveCollisionWith(a_pOther);
 		a_pOther->RemoveCollisionWith(this);
 	}
 	return bColliding;
 }
 
-void MyRigidBody::AddToRenderList(void)
-{
-	if (m_bVisibleBS)
-	{
+
+uint MyRigidBody::SAT(MyRigidBody* const a_pOther) {
+	/*
+	SAT by Daniel Timko
+
+	Check all 15 axes
+	Pulled a lot from the book, but I understand that if a plane can be drawn between
+	two boxes, those boxes aren't colliding
+
+	Basically, get all 15 axes (the local of both A and B, and every possible cross product) and
+	project b.c - a.c onto every one.  Then, project the half widths.  If the sum of the half widths
+	projection magnitudes is less than the distance projection magnitude, that axis separates the objects
+
+	That is simplified, but yeah.  General explanation.  I'm better at math than I am at words
+	*/
+
+	struct OBB {
+		vector3 c;
+		vector3 u[3];
+		vector3 e;
+	};
+
+	//OBB structs for both rigid bodies
+	OBB a, b;
+
+	//Get OBB centers
+	a.c = GetCenterGlobal();
+	b.c = a_pOther->GetCenterGlobal();
+
+	//Get OBB half widths
+	/*a.e = GetHalfWidth();
+	b.e = a_pOther->GetHalfWidth();*/
+
+	a.e = m_v3GHalfWidth;
+	b.e = a_pOther->m_v3GHalfWidth;
+
+	//Get OBB local axes in world space
+	//Local axes of A (a.u)
+	a.u[0] = glm::normalize(vector3(m_m4ToWorld * vector4(AXIS_X, 0.0f))); //Local A x axis
+	a.u[1] = glm::normalize(vector3(m_m4ToWorld * vector4(AXIS_Y, 0.0f))); //Local A y axis
+	a.u[2] = glm::normalize(vector3(m_m4ToWorld * vector4(AXIS_Z, 0.0f))); //Local A z axis
+																		   //Local axes of B (b.u)
+	b.u[0] = glm::normalize(vector3(a_pOther->m_m4ToWorld * vector4(AXIS_X, 0.0f))); //Local A x axis
+	b.u[1] = glm::normalize(vector3(a_pOther->m_m4ToWorld * vector4(AXIS_Y, 0.0f))); //Local A y axis
+	b.u[2] = glm::normalize(vector3(a_pOther->m_m4ToWorld * vector4(AXIS_Z, 0.0f))); //Local A z axis
+
+																					 //Vars used for SAT
+	float ra, rb;
+	matrix3 R, AbsR;
+
+	//Compute rotation matrix
+	for (int i = 0; i < 3; i++) {
+		for (int j = 0; j < 3; j++) {
+			//Every axis from b projected onto every axis from a.  This rotation matrix will transform things from b's
+			//local space to a's local space
+			R[i][j] = glm::dot(a.u[i], b.u[j]);
+		}
+	}
+
+	//Translation between the two OBB
+	vector3 t = b.c - a.c;
+	//Transform the translation into a's local coordinates by projecting each component onto a's unit axes
+	t = vector3(glm::dot(t, a.u[0]), glm::dot(t, a.u[1]), glm::dot(t, a.u[2]));
+
+	//Absolute value every dot product in the rotation matrix and make sure nothing is equal to zero to avoid null vectors
+	for (int i = 0; i < 3; i++) {
+		for (int j = 0; j < 3; j++) {
+			//Make sure that nothing is zero using epsilon
+			//Also remove the sign from the dot product since we are only interested in lengths
+			AbsR[i][j] = glm::abs(R[i][j]) + FLT_EPSILON;
+		}
+	}
+
+	//Test axes L = A0, L = A1, L = A2
+	for (int i = 0; i < 3; i++) {
+		//Get half width along this axis for object A
+		ra = a.e[i];
+		//Get b's half width projected onto this axis
+		//rb = b.half[x] * proj(b.u[x], a.u[i]) + b.half[y] * proj(b.u[y], a.u[i]) + b.half[z] * proj(b.u[z], a.u[i])
+		rb = b.e[0] * AbsR[i][0] + b.e[1] * AbsR[i][1] + b.e[2] * AbsR[i][2];
+		//If the length of the distance between the objects on this axis is longer than both half widths
+		if (glm::abs(t[i]) > ra + rb) {
+			//Seperation axis found!  Which one?  0 = a.u[x], 1 = a.u[y], 2 = a.u[z]
+			if (i == 0) {
+				//Display a separation plane.  The separation axis is the up vector
+				AddSeparationPlane(a.u[0], a.u[2], C_RED, a.c, glm::normalize(b.c - a.c)*(a.e[0] + 0.2f));
+				//Return the axis of separation
+				return 1;
+			} else if (i == 1) {
+				//Display a separation plane.  The separation axis is the up vector
+				AddSeparationPlane(a.u[1], a.u[0], C_GREEN, a.c, glm::normalize(b.c - a.c)*(a.e[1] + 0.2f));
+				//Return the axis of separation
+				return 2;
+			} else if (i == 2) {
+				//Display a separation plane.  The separation axis is the up vector
+				AddSeparationPlane(a.u[2], a.u[0], C_BLUE, a.c, glm::normalize(b.c - a.c)*(a.e[2] + 0.2f));
+				//Return the axis of separation
+				return 3;
+			}
+		}
+	}
+
+	//Test axes L = B0, L = B1, L = B2
+	for (int i = 0; i < 3; i++) {
+		//Get a's half width projected onto this axis
+		//rb = a.half[x] * proj(b.u[i], a.u[x]) + a.half[y] * proj(b.u[i], a.u[y]) + a.half[z] * proj(b.u[i], a.u[z])
+		ra = a.e[0] * AbsR[0][i] + a.e[1] * AbsR[1][i] + a.e[2] * AbsR[2][i];
+		//Get half width along this axis for object B
+		rb = b.e[i];
+		//If the length of the distance between the objects (projected onto this axis, since it is in the local space of A) 
+		//is longer than both of the half widths
+		if (glm::abs(t[0] * R[0][i] + t[1] * R[1][i] + t[2] * R[2][i]) > ra + rb) {
+			//Seperation axis found!  Which one? 0 = b.u[x], 1 = b.u[y], 2 = b.u[z]
+			if (i == 0) {
+				//Display a separation plane.  The separation axis is the up vector
+				AddSeparationPlane(b.u[0], b.u[2], C_RED, b.c, glm::normalize(a.c - b.c)*(b.e[0] + 0.2f));
+				//Return the axis of separation
+				return 4;
+			} else if (i == 1) {
+				//Display a separation plane.  The separation axis is the up vector
+				AddSeparationPlane(b.u[1], b.u[0], C_GREEN, b.c, glm::normalize(a.c - b.c)*(b.e[1] + 0.2f));
+				//Return the axis of separation
+				return 5;
+			} else if (i == 2) {
+				//Display a separation plane.  The separation axis is the up vector
+				AddSeparationPlane(b.u[2], b.u[0], C_BLUE, b.c, glm::normalize(a.c - b.c)*(b.e[2] + 0.2f));
+				//Return the axis of separation
+				return 6;
+			}
+		}
+	}
+
+	//For every local A axis (aa)
+	for (int aa = 0; aa < 3; aa++) {
+		//For every local B axis (ba)
+		for (int ba = 0; ba < 3; ba++) {
+			//Test the cross product  aa X ba
+			//Get the opposite axes for A
+			int ao1 = (aa + 1) % 3;
+			int ao2 = (aa + 2) % 3;
+			//Get the opposite axes for B
+			int bo1 = (ba + 1) % 3;
+			int bo2 = (ba + 2) % 3;
+
+			//Take A's halfWidth values not on this A axis
+			//multiply each by the opposite A axis after its been projected onto this B axis
+			// a.half[ao1] * proj(a.u[ao2], b.u[ba]) + a.half[ao2] * proj(a.u[ao1], b.u[ba])
+			ra = a.e[ao1] * AbsR[ao2][ba] + a.e[ao2] * AbsR[ao1][ba];
+			//Take b's halfWidth values not on this B axis
+			//multiply each by the opposite B axis after its been projected onto this A axis
+			// b.half[bo1] * proj(b.u[bo2], a.u[aa]) + b.half[bo2] * proj(b.u[bo1], a.u[aa])
+			rb = b.e[bo1] * AbsR[aa][bo2] + b.e[bo2] * AbsR[aa][bo1];
+
+			//Get t's magnitude in terms of this axis
+			//Project t's components not on this A axis
+			//onto the dot of the other A axes and this B axis
+			float tProj = glm::abs(t[ao2] * R[ao1][ba] - t[ao1] * R[ao2][ba]);
+
+			//If the length of the distance between the objects (projected onto this axis) 
+			//is longer than both of the half widths, this is the separation axis!
+			if (tProj > ra + rb) {
+				//Display a separation plane by crossing the current axes for the up vector (plane normal)
+				//and passing in this A axis as the right vector
+				//NOTE: the 9 planes found via cross products don't have unique colors.  I would have had to hard code them 
+				//and the rubric said not to do that
+				AddSeparationPlane(glm::cross(a.u[aa], b.u[ba]), a.u[aa], C_ORANGE, a.c, glm::normalize(b.c - a.c)*(a.e[0] + 0.2f));
+
+				//Return the axis of separation
+				//Skip the 6 enum values for the object's local coordinates and then add the current axes together
+				//For instance, AX x BX would be 6 since those would both be 0
+				//              6 + 3*aa + ba = axis enum
+				//AXxBX = 6  :: 6 + 3* 0 +  0 = 6
+				//AXxBY = 7  :: 6 + 3* 0 +  1 = 7
+				//AXxBZ = 8  :: 6 + 3* 0 +  2 = 8
+				//AYxBX = 9  :: 6 + 3* 1 +  0 = 9
+				//AYxBY = 10 :: 6 + 3* 1 +  1 = 10
+				//AYxBZ = 11 :: 6 + 3* 1 +  2 = 11
+				//AZxBX = 12 :: 6 + 3* 2 +  0 = 12
+				//AZxBY = 13 :: 6 + 3* 2 +  1 = 13
+				//AZxBZ = 14 :: 6 + 3* 2 +  2 = 14
+				return (6 + 3 * aa + ba);
+			}
+		}
+	}
+	//there is no axis test that separates this two objects
+	return 0;
+}
+
+//Really simple method that draws a separation plane next to an object given an up (normal) vector and a right vector
+//Draws it centered at center + dist.
+//I coded so this doesn't clip the mesh except in some special cases where the up vector is a computed cross product
+void MyRigidBody::AddSeparationPlane(vector3 up, vector3 right, vector3 color, vector3 center, vector3 dist) {
+	//Calculate the forward and reverse forward vector (the plane needs to be created twice so it can be seen from all angles)
+	//To do this, cross the up and right vectors in opposite orders
+	vector3 forward = glm::cross(up, right);
+	vector3 forwardR = glm::cross(right, up);
+
+	//Create a plane transformation matrix.  Translate it to the provided world location, rotate it using the right, forward, and up 
+	//vectors, and then scale it so it is large enough to be visible
+	matrix4 planeToWorld = glm::translate(center + dist) * (matrix4)matrix3(right, forward, up) * glm::scale(vector3(2.5f, 2.5f, 2.5f));
+	matrix4 planeToWorldR = glm::translate(center + dist) * (matrix4)matrix3(right, forwardR, up) * glm::scale(vector3(2.5f, 2.5f, 2.5f));
+
+	//Add both planes to the mesh manager render list
+	m_pMeshMngr->AddPlaneToRenderList(planeToWorld, color, 1);
+	m_pMeshMngr->AddPlaneToRenderList(planeToWorldR, color, 1);
+}
+
+void MyRigidBody::AddToRenderList(void) {
+	if (m_bVisibleBS) {
 		if (m_nCollidingCount > 0)
 			m_pMeshMngr->AddWireSphereToRenderList(glm::translate(m_m4ToWorld, m_v3CenterL) * glm::scale(vector3(m_fRadius)), C_BLUE_CORNFLOWER);
 		else
 			m_pMeshMngr->AddWireSphereToRenderList(glm::translate(m_m4ToWorld, m_v3CenterL) * glm::scale(vector3(m_fRadius)), C_BLUE_CORNFLOWER);
 	}
-	if (m_bVisibleOBB)
-	{
+	if (m_bVisibleOBB) {
 		if (m_nCollidingCount > 0)
 			m_pMeshMngr->AddWireCubeToRenderList(glm::translate(m_m4ToWorld, m_v3CenterL) * glm::scale(m_v3HalfWidth * 2.0f), m_v3ColorColliding);
 		else
 			m_pMeshMngr->AddWireCubeToRenderList(glm::translate(m_m4ToWorld, m_v3CenterL) * glm::scale(m_v3HalfWidth * 2.0f), m_v3ColorNotColliding);
 	}
-	if (m_bVisibleARBB)
-	{
+	if (m_bVisibleARBB) {
 		if (m_nCollidingCount > 0)
 			m_pMeshMngr->AddWireCubeToRenderList(glm::translate(m_v3CenterG) * glm::scale(m_v3ARBBSize), C_YELLOW);
 		else
 			m_pMeshMngr->AddWireCubeToRenderList(glm::translate(m_v3CenterG) * glm::scale(m_v3ARBBSize), C_YELLOW);
 	}
 }
-bool MyRigidBody::IsInCollidingArray(MyRigidBody* a_pEntry)
-{
+
+bool MyRigidBody::IsInCollidingArray(MyRigidBody* a_pEntry) {
 	//see if the entry is in the set
-	for (uint i = 0; i < m_nCollidingCount; i++)
-	{
+	for (uint i = 0; i < m_nCollidingCount; i++) {
 		if (m_CollidingArray[i] == a_pEntry)
 			return true;
 	}

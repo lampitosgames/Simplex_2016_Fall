@@ -17,6 +17,9 @@ void Application::InitVariables(void)
 #endif
 	int nSquare = static_cast<int>(std::sqrt(uInstances));
 	m_uObjects = nSquare * nSquare;
+
+	rootNode = new Octree();
+
 	uint uIndex = -1;
 	for (int i = 0; i < nSquare; i++)
 	{
@@ -27,9 +30,14 @@ void Application::InitVariables(void)
 			vector3 v3Position = vector3(glm::sphericalRand(34.0f));
 			matrix4 m4Position = glm::translate(v3Position);
 			m_pEntityMngr->SetModelMatrix(m4Position);
+
+			Octree::s_qToInsert.push_back(m_pEntityMngr->GetEntityCount() - 1);
 		}
 	}
 	m_uOctantLevels = 1;
+
+	rootNode->UpdateTree();
+
 	m_pEntityMngr->Update();
 }
 void Application::Update(void)
@@ -55,7 +63,7 @@ void Application::Display(void)
 	ClearScreen();
 
 	//display octree
-	//m_pRoot->Display();
+	rootNode->Display();
 	
 	// draw a skybox
 	m_pMeshMngr->AddSkyboxToRenderList();
