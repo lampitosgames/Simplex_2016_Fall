@@ -19,11 +19,12 @@ namespace Simplex
 class Application
 {
 	MyEntityManager* m_pEntityMngr = nullptr; //Entity Manager
-	uint m_uOctantID = -1; //Index of Octant to display
+	int m_uOctantID = -1; //Index of Octant to display
 	uint m_uObjects = 0; //Number of objects in the scene
 	uint m_uOctantLevels = 0; //Number of levels in the octree
 
 	Octree* rootNode = nullptr;
+	bool m_bRealtimeOctreeActive = false; //Experimental octree that re-builds itself based on object movement.  Not quite working right
 private:
 	String m_sProgrammer = "Alberto Bobadilla - labigm@rit.edu"; //programmer
 

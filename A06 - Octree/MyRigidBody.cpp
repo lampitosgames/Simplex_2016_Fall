@@ -89,6 +89,8 @@ vector3 MyRigidBody::GetMinGlobal(void) { return m_v3MinG; }
 vector3 MyRigidBody::GetMaxGlobal(void) { return m_v3MaxG; }
 vector3 MyRigidBody::GetHalfWidth(void) { return m_v3HalfWidth; }
 matrix4 MyRigidBody::GetModelMatrix(void) { return m_m4ToWorld; }
+bool MyRigidBody::GetHasChanged(void) { return m_bHasChanged; }
+void Simplex::MyRigidBody::ChangesAccepted(void) { m_bHasChanged = false; }
 void MyRigidBody::SetModelMatrix(matrix4 a_m4ModelMatrix) {
 	//to save some calculations if the model matrix is the same there is nothing to do here
 	if (a_m4ModelMatrix == m_m4ToWorld)
@@ -96,6 +98,9 @@ void MyRigidBody::SetModelMatrix(matrix4 a_m4ModelMatrix) {
 
 	//Assign the model matrix
 	m_m4ToWorld = a_m4ModelMatrix;
+
+	//The matrix has been updated.  Flag this rigidbody as recently updated
+	m_bHasChanged = true;
 
 	m_v3CenterG = vector3(m_m4ToWorld * vector4(m_v3CenterL, 1.0f));
 

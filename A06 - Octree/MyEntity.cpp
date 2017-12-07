@@ -1,4 +1,5 @@
 #include "MyEntity.h"
+#include "Octree.h"
 using namespace Simplex;
 std::map<String, MyEntity*> MyEntity::m_IDMap;
 //  Accessors
@@ -11,6 +12,16 @@ void Simplex::MyEntity::SetModelMatrix(matrix4 a_m4ToWorld)
 	m_m4ToWorld = a_m4ToWorld;
 	m_pModel->SetModelMatrix(m_m4ToWorld);
 	m_pRigidBody->SetModelMatrix(m_m4ToWorld);
+}
+bool Simplex::MyEntity::GetHasChanged(void) {
+	if (!m_bInMemory)
+		return false;
+	return m_pRigidBody->GetHasChanged();
+}
+void Simplex::MyEntity::ChangesAccepted(void) {
+	if (!m_bInMemory)
+		return;
+	m_pRigidBody->ChangesAccepted();
 }
 Model* Simplex::MyEntity::GetModel(void){return m_pModel;}
 MyRigidBody* Simplex::MyEntity::GetRigidBody(void){	return m_pRigidBody; }
@@ -25,10 +36,10 @@ void Simplex::MyEntity::Init(void)
 	m_bSetAxis = false;
 	m_pModel = nullptr;
 	m_pRigidBody = nullptr;
-	m_DimensionArray = nullptr;
 	m_m4ToWorld = IDENTITY_M4;
 	m_sUniqueID = "";
-	m_nDimensionCount = 0;
+	m_pOctants = nullptr;
+	m_uOctantCount = 0;
 }
 void Simplex::MyEntity::Swap(MyEntity& other)
 {
@@ -40,8 +51,8 @@ void Simplex::MyEntity::Swap(MyEntity& other)
 	std::swap(m_bInMemory, other.m_bInMemory);
 	std::swap(m_sUniqueID, other.m_sUniqueID);
 	std::swap(m_bSetAxis, other.m_bSetAxis);
-	std::swap(m_nDimensionCount, other.m_nDimensionCount);
-	std::swap(m_DimensionArray, other.m_DimensionArray);
+	std::swap(m_uOctantCount, other.m_uOctantCount);
+	std::swap(m_pOctants, other.m_pOctants);
 }
 void Simplex::MyEntity::Release(void)
 {
@@ -49,10 +60,10 @@ void Simplex::MyEntity::Release(void)
 	//it is not the job of the entity to release the model, 
 	//it is for the mesh manager to do so.
 	m_pModel = nullptr;
-	if (m_DimensionArray)
+	if (m_pOctants)
 	{
-		delete[] m_DimensionArray;
-		m_DimensionArray = nullptr;
+		delete[] m_pOctants;
+		m_pOctants = nullptr;
 	}
 	SafeDelete(m_pRigidBody);
 	m_IDMap.erase(m_sUniqueID);
@@ -83,9 +94,8 @@ Simplex::MyEntity::MyEntity(MyEntity const& other)
 	m_pMeshMngr = other.m_pMeshMngr;
 	m_sUniqueID = other.m_sUniqueID;
 	m_bSetAxis = other.m_bSetAxis;
-	m_nDimensionCount = other.m_nDimensionCount;
-	m_DimensionArray = other.m_DimensionArray;
-
+	m_uOctantCount = other.m_uOctantCount;
+	m_pOctants = other.m_pOctants;
 }
 MyEntity& Simplex::MyEntity::operator=(MyEntity const& other)
 {
@@ -137,114 +147,13 @@ void Simplex::MyEntity::GenUniqueID(String& a_sUniqueID)
 	}
 	return;
 }
-void Simplex::MyEntity::AddDimension(uint a_uDimension)
-{
-	//we need to check that this dimension is not already allocated in the list
-	if (IsInDimension(a_uDimension))
-		return;//it is, so there is no need to add
-
-	//insert the entry
-	uint* pTemp;
-	pTemp = new uint[m_nDimensionCount + 1];
-	if(m_DimensionArray)
-	{
-		memcpy(pTemp, m_DimensionArray, sizeof(uint) * m_nDimensionCount);
-		delete[] m_DimensionArray;
-		m_DimensionArray = nullptr;
-	}
-	pTemp[m_nDimensionCount] = a_uDimension;
-	m_DimensionArray = pTemp;
-
-	++m_nDimensionCount;
-
-	SortDimensions();
-}
-void Simplex::MyEntity::RemoveDimension(uint a_uDimension)
-{
-	//if there are no dimensions return
-	if (m_nDimensionCount == 0)
-		return;
-
-	//we look one by one if its the one wanted
-	for (uint i = 0; i < m_nDimensionCount; i++)
-	{
-		if (m_DimensionArray[i] == a_uDimension)
-		{
-			//if it is, then we swap it with the last one and then we pop
-			std::swap(m_DimensionArray[i], m_DimensionArray[m_nDimensionCount - 1]);
-			uint* pTemp;
-			pTemp = new uint[m_nDimensionCount - 1];
-			if (m_DimensionArray)
-			{
-				memcpy(pTemp, m_DimensionArray, sizeof(uint) * (m_nDimensionCount-1));
-				delete[] m_DimensionArray;
-				m_DimensionArray = nullptr;
-			}
-			m_DimensionArray = pTemp;
-			
-			--m_nDimensionCount;
-			SortDimensions();
-			return;
-		}
-	}
-}
-void Simplex::MyEntity::ClearDimensionSet(void)
-{
-	if (m_DimensionArray)
-	{
-		delete[] m_DimensionArray;
-		m_DimensionArray = nullptr;
-	}
-	m_nDimensionCount = 0;
-}
-bool Simplex::MyEntity::IsInDimension(uint a_uDimension)
-{
-	//see if the entry is in the set
-	for (uint i = 0; i < m_nDimensionCount; i++)
-	{
-		if (m_DimensionArray[i] == a_uDimension)
-			return true;
-	}
-	return false;
-}
-bool Simplex::MyEntity::SharesDimension(MyEntity* const a_pOther)
-{
-	
-	//special case: if there are no dimensions on either MyEntity
-	//then they live in the special global dimension
-	if (0 == m_nDimensionCount)
-	{
-		//if no spatial optimization all cases should fall here as every 
-		//entity is by default, under the special global dimension only
-		if(0 == a_pOther->m_nDimensionCount)
-			return true;
-	}
-
-	//for each dimension on both Entities we check if there is a common dimension
-	for (uint i = 0; i < m_nDimensionCount; ++i)
-	{
-		for (uint j = 0; j < a_pOther->m_nDimensionCount; j++)
-		{
-			if (m_DimensionArray[i] == a_pOther->m_DimensionArray[j])
-				return true; //as soon as we find one we know they share dimensionality
-		}
-	}
-
-	//could not find a common dimension
-	return false;
-}
 bool Simplex::MyEntity::IsColliding(MyEntity* const other)
 {
 	//if not in memory return
 	if (!m_bInMemory || !other->m_bInMemory)
 		return true;
 
-	//if the entities are not living in the same dimension
-	//they are not colliding
-	//if (!SharesDimension(other))
-	//	return false;
-
-	if (m_octantID != other->m_octantID) {
+	if (!SharesOctant(other)) {
 		return false;
 	}
 
@@ -254,7 +163,97 @@ void Simplex::MyEntity::ClearCollisionList(void)
 {
 	m_pRigidBody->ClearCollidingList();
 }
-void Simplex::MyEntity::SortDimensions(void)
-{
-	std::sort(m_DimensionArray, m_DimensionArray + m_nDimensionCount);
+
+void Simplex::MyEntity::AddOctant(uint octantID) {
+	uint* tempOctants = new uint[m_uOctantCount + 1];
+	for (uint i = 0; i < m_uOctantCount; i++) {
+		tempOctants[i] = m_pOctants[i];
+	}
+	tempOctants[m_uOctantCount] = octantID;
+	if (m_pOctants != nullptr) {
+		delete[] m_pOctants;
+	}
+	m_pOctants = tempOctants;
+	m_uOctantCount++;
+
+	//we need to check that this octant is not already allocated in the list
+	if (HasOctant(octantID))
+		return;//it is, so there is no need to add
+
+    //insert the entry
+	uint* pTemp;
+	pTemp = new uint[m_uOctantCount + 1];
+	if (m_pOctants) {
+		memcpy(pTemp, m_pOctants, sizeof(uint) * m_uOctantCount);
+		delete[] m_pOctants;
+		m_pOctants = nullptr;
+	}
+	pTemp[m_uOctantCount] = octantID;
+	m_pOctants = pTemp;
+
+	m_uOctantCount++;
+
+	SortOctants();
+}
+
+void Simplex::MyEntity::ClearOctantList() {
+	if (m_pOctants == nullptr) {
+		return;
+	}
+	delete[] m_pOctants;
+	m_pOctants = nullptr;
+	m_uOctantCount = 0;
+}
+
+void Simplex::MyEntity::RemoveOctant(uint octantID) {
+	if (m_uOctantCount == 0) {
+		return;
+	}
+	
+	for (uint i = 0; i < m_uOctantCount; i++) {
+		if (m_pOctants[i] == octantID) {
+			//if it is, then we swap it with the last one and then we pop
+			std::swap(m_pOctants[i], m_pOctants[m_uOctantCount - 1]);
+			uint* pTemp;
+			pTemp = new uint[m_uOctantCount - 1];
+			if (m_pOctants) {
+				memcpy(pTemp, m_pOctants, sizeof(uint) * (m_uOctantCount - 1));
+				delete[] m_pOctants;
+				m_pOctants = nullptr;
+			}
+			m_pOctants = pTemp;
+			m_uOctantCount--;
+			SortOctants();
+			return;
+		}
+	}
+}
+
+bool Simplex::MyEntity::SharesOctant(MyEntity* const other) {
+	//If neither entity has a dimension, both are in global space
+	if (m_uOctantCount == 0 && other->m_uOctantCount == 0) {
+		return true;
+	}
+
+	for (uint i = 0; i < m_uOctantCount; i++) {
+		for (uint j = 0; j < other->m_uOctantCount; j++) {
+			if (m_pOctants[i] == other->m_pOctants[j]) {
+				return true;
+			}
+		}
+	}
+	return false;
+}
+
+bool Simplex::MyEntity::HasOctant(uint octantID) {
+	for (uint i = 0; i < m_uOctantCount; i++) {
+		if (m_pOctants[i] == octantID) {
+			return true;
+		}
+	}
+	return false;
+}
+
+void Simplex::MyEntity::SortOctants(void) {
+	std::sort(m_pOctants, m_pOctants + m_uOctantCount);
 }

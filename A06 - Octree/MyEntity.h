@@ -17,9 +17,6 @@ class MyEntity
 	bool m_bSetAxis = false; //render axis flag
 	String m_sUniqueID = ""; //Unique identifier name
 
-	uint m_nDimensionCount = 0; //tells how many dimensions this entity lives in
-	uint* m_DimensionArray = nullptr; //Dimensions on which this entity is located
-
 	Model* m_pModel = nullptr; //Model associated with this MyEntity
 	MyRigidBody* m_pRigidBody = nullptr; //Rigid Body associated with this MyEntity
 
@@ -28,10 +25,10 @@ class MyEntity
 
 	static std::map<String, MyEntity*> m_IDMap; //a map of the unique ID's
 
+	uint m_uOctantCount = 0;
+	uint* m_pOctants = nullptr;
+
 public:
-
-	uint m_octantID = 0;
-
 	/*
 	Usage: Constructor that specifies the name attached to the MyEntity
 	Arguments:
@@ -76,6 +73,18 @@ public:
 	OUTPUT: ---
 	*/
 	void SetModelMatrix(matrix4 a_m4ToWorld);
+	/*
+	USAGE: Gets whether the entity has changed recently
+	ARGUMENTS: ---
+	OUTPUT: ---
+	*/
+	bool GetHasChanged(void);
+	/*
+	Usage: Called to let this entity know that its changes have been accounted for by the rest of the engine
+	Arguments: ---
+	Output: ---
+	*/
+	void ChangesAccepted(void);
 	/*
 	USAGE: Gets the model associated with this entity
 	ARGUMENTS: ---
@@ -130,36 +139,6 @@ public:
 	OUTPUT: ---
 	*/
 	void SetAxisVisible(bool a_bSetAxis = true);
-	/*
-	USAGE: Will set a dimension to the MyEntity
-	ARGUMENTS: uint a_uDimension -> dimension to set
-	OUTPUT: ---
-	*/
-	void AddDimension(uint a_uDimension);
-	/*
-	USAGE: Will remove the entity from the specified dimension
-	ARGUMENTS: uint a_uDimension -> dimension to remove
-	OUTPUT: ---
-	*/
-	void RemoveDimension(uint a_uDimension);
-	/*
-	USAGE: will remove all dimensions from entity
-	ARGUMENTS: ---
-	OUTPUT: ---
-	*/
-	void ClearDimensionSet(void);
-	/*
-	USAGE: Will ask if the MyEntity is located in a particular dimension
-	ARGUMENTS: uint a_uDimension -> dimension queried
-	OUTPUT: result
-	*/
-	bool IsInDimension(uint a_uDimension);
-	/*
-	USAGE: Asks if this entity shares a dimension with the incoming one
-	ARGUMENTS: MyEntity* const a_pOther -> queried entity
-	OUTPUT: shares at least one dimension?
-	*/
-	bool SharesDimension(MyEntity* const a_pOther);
 
 	/*
 	USAGE: Clears the collision list of this entity
@@ -168,12 +147,12 @@ public:
 	*/
 	void ClearCollisionList(void);
 
-	/*
-	USAGE: Will sort the array of dimensions
-	ARGUMENTS: ---
-	OUTPUT: ---
-	*/
-	void SortDimensions(void);
+	void AddOctant(uint octantID);
+	void ClearOctantList();
+	void RemoveOctant(uint octantID);
+	bool SharesOctant(MyEntity* const other);
+	bool HasOctant(uint octantID);
+	void SortOctants(void);
 
 private:
 	/*

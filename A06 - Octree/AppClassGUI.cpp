@@ -38,7 +38,7 @@ void Application::DrawGUI(void)
 			ImGui::TextColored(v4Color, m_sProgrammer.c_str());
 			ImGui::Text("FrameRate: %.2f [FPS] -> %.3f [ms/frame]\n",
 				ImGui::GetIO().Framerate, 1000.0f / ImGui::GetIO().Framerate);
-			ImGui::Text("Levels in Octree: %d\n", m_uOctantLevels);
+			ImGui::Text("Levels in Octree: %d\n", Octree::s_uMaxLevel);
 			//ImGui::Text("Octants: %d\n", m_pRoot->GetOctantCount());
 			ImGui::Text("Objects: %d\n", m_uObjects);
 			ImGui::Separator();
@@ -54,6 +54,8 @@ void Application::DrawGUI(void)
 			ImGui::Separator();
 			ImGui::Text("	  -: Increment Octree subdivision\n");
 			ImGui::Text("	  +: Decrement Octree subdivision\n");
+			ImGui::Separator();
+			ImGui::Text(" Enter: Toggle experimental real-time octree mode (BUGGY!)\n");
 			ImGui::Separator();
 			ImGui::TextColored(ImColor(255, 255, 0), "Octree\n");
 		}
