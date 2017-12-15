@@ -303,7 +303,7 @@ uint MyRigidBody::SAT(MyRigidBody* const a_pOther)
 
 	struct OBB {
 		vector3 c;
-		vector3 u[3];
+		matrix3 u;
 		vector3 e;
 	};
 
@@ -313,10 +313,6 @@ uint MyRigidBody::SAT(MyRigidBody* const a_pOther)
 	//Get OBB centers
 	a.c = GetCenterGlobal();
 	b.c = a_pOther->GetCenterGlobal();
-
-	//Get OBB half widths
-	/*a.e = GetHalfWidth();
-	b.e = a_pOther->GetHalfWidth();*/
 
 	a.e = m_v3GHalfWidth;
 	b.e = a_pOther->m_v3GHalfWidth;
@@ -330,6 +326,39 @@ uint MyRigidBody::SAT(MyRigidBody* const a_pOther)
 	b.u[0] = glm::normalize(vector3(a_pOther->m_m4ToWorld * vector4(AXIS_X, 0.0f))); //Local A x axis
 	b.u[1] = glm::normalize(vector3(a_pOther->m_m4ToWorld * vector4(AXIS_Y, 0.0f))); //Local A y axis
 	b.u[2] = glm::normalize(vector3(a_pOther->m_m4ToWorld * vector4(AXIS_Z, 0.0f))); //Local A z axis
+
+    //vector3 D = a.c - b.c;
+	//vector3 L[15];
+	//L[0] = a.u[0];
+	//L[1] = a.u[1];
+	//L[2] = a.u[2];
+	//L[3] = b.u[0];
+	//L[4] = b.u[1];
+	//L[5] = b.u[2];
+
+	////all three b axes crossed with a.x
+	//L[6]  = glm::cross(a.u[0], b.u[0]);
+	//L[7]  = glm::cross(a.u[0], b.u[1]);
+	//L[8]  = glm::cross(a.u[0], b.u[2]);
+	////all three b axes crossed with a.y
+	//L[9]  = glm::cross(a.u[1], b.u[0]);
+	//L[10] = glm::cross(a.u[1], b.u[1]);
+	//L[11] = glm::cross(a.u[1], b.u[2]);
+	////all three b axes crossed with a.z
+	//L[12] = glm::cross(a.u[2], b.u[0]);
+	//L[13] = glm::cross(a.u[2], b.u[1]);
+	//L[14] = glm::cross(a.u[2], b.u[2]);
+
+	//for (uint i = 0; i < 15; i++) {
+	//	vector3 rA = a.u * glm::sign(L[i] * a.u) * a.e;
+	//	vector3 rB = b.u * glm::sign(L[i] * b.u) * b.e;
+
+	//	//https://www.facebook.com/photo.php?fbid=1697084560322129&set=pcb.1697085330322052&type=3&theater
+	//	if (glm::abs( glm::dot(D, L[i]) ) > glm::abs( glm::dot(rA, L[i]) ) + glm::abs( glm::dot(rB, L[i]) )) {
+	//		return i;
+	//	}
+	//}
+	//return 0;
 
 	//Vars used for SAT
 	float ra, rb;
